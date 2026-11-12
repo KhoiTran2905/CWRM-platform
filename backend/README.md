@@ -4,7 +4,7 @@ Khung API NestJS 12 dùng PostgreSQL và Prisma 7 cho nền tảng điều phố
 
 ## Yêu cầu máy
 
-- Node.js 22 trở lên.
+- Node.js 22.22.3 trở lên (dòng 22), 24.15 trở lên (dòng 24) hoặc từ 26. Đây là yêu cầu của Nest CLI; bản thấp hơn vẫn cài được nhưng `npm ci` báo `EBADENGINE`. Đã kiểm chứng trên Node 24.22.2; Node 24.13 và 24.14 chạy được kèm cảnh báo.
 - Docker Desktop đang chạy.
 - npm đi kèm Node.js.
 
@@ -36,7 +36,7 @@ npm run start:dev
 
 `npm ci` chạy `prisma generate` tự động. Migration deploy áp dụng schema hiện có; seed được chạy riêng và có thể lặp lại. Lệnh seed cần `SEED_DEMO_PASSWORD` trong `.env`.
 
-PostgreSQL chạy trong Docker và mở ra máy thật ở cổng **5433** (không phải 5432), để không đụng PostgreSQL khác có sẵn trên máy. Cụm Docker tên `cwrm`, container là `cwrm-db-1`.
+PostgreSQL chạy trong Docker và chỉ mở trên `127.0.0.1` của máy thật ở cổng **5433** (không phải 5432), để không đụng PostgreSQL khác có sẵn trên máy. Cụm Docker tên `cwrm`, container là `cwrm-db-1`.
 
 Nếu PowerShell báo `npm.ps1 cannot be loaded because running scripts is disabled`, hãy gõ `npm.cmd` thay cho `npm` (ví dụ `npm.cmd ci`), hoặc chạy các lệnh trong Command Prompt hay Git Bash.
 

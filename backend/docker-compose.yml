@@ -9,7 +9,8 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Hãy khai báo POSTGRES_PASSWORD trong .env}"
       POSTGRES_DB: "${POSTGRES_DB:?Hãy khai báo POSTGRES_DB trong .env}"
     ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      # Chỉ mở trên máy đang chạy, không mở ra mạng nội bộ.
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - cwrm_postgres_data:/var/lib/postgresql/data
     healthcheck:
