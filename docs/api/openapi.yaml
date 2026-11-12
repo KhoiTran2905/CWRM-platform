@@ -51,6 +51,7 @@ info:
     | 503 | AI_TIMEOUT | Provider timeout; giữ risk/evidence và cho thử lại |
     | 503 | AI_QUOTA_EXCEEDED | Hết quota; giữ risk/evidence và cho thử lại |
     | 503 | RISK_EVALUATION_FAILED | Không thể đánh giá risk; snapshot trước không được coi là hiện hành |
+    | 503 | SERVICE_UNAVAILABLE | GET /health không truy vấn được database |
 
     Lỗi AI (502, 503) trả thêm trong details: retryable, recommendationId của bản ghi FAILED đã lưu và fallbackExplanation là diễn giải theo mẫu của rule. Risk và evidence vẫn đọc được qua các endpoint Risk.
 servers:
@@ -96,6 +97,7 @@ paths:
       responses:
         '200': {description: API đang hoạt động, content: {application/json: {schema: {$ref: '#/components/schemas/Health'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
+        '503': {description: 'Không truy vấn được database; dịch vụ tạm thời không sẵn sàng (503 SERVICE_UNAVAILABLE)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
         default: {$ref: '#/components/responses/UnexpectedError'}
   /auth/register:
     post:
@@ -2599,7 +2601,7 @@ components:
           properties:
             code:
               type: string
-              enum: [VALIDATION_ERROR, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VERSION_CONFLICT, CAPACITY_EXCEEDED, UNIQUE_CONFLICT, SNAPSHOT_NOT_CURRENT, INVALID_STATE_TRANSITION, NOT_ELIGIBLE, PREDECESSOR_NOT_DONE, OPEN_BLOCKERS_EXIST, NO_ACCEPTED_RESPONSIBLE, DEPENDENCY_CYCLE, CROSS_TEAM_DEPENDENCY, ACCOUNTABLE_NOT_MANAGER, LAST_MANAGER_REQUIRED, RESPONSIBILITY_REQUIRED, INVITEE_NOT_REGISTERED, RISK_INPUT_INVALID, RISK_EVALUATION_FAILED, AI_SNAPSHOT_LEVEL_NOT_SUPPORTED, AI_PROVIDER_ERROR, AI_TIMEOUT, AI_QUOTA_EXCEEDED, AI_OUTPUT_INVALID, INTERNAL_ERROR]
+              enum: [VALIDATION_ERROR, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VERSION_CONFLICT, CAPACITY_EXCEEDED, UNIQUE_CONFLICT, SNAPSHOT_NOT_CURRENT, INVALID_STATE_TRANSITION, NOT_ELIGIBLE, PREDECESSOR_NOT_DONE, OPEN_BLOCKERS_EXIST, NO_ACCEPTED_RESPONSIBLE, DEPENDENCY_CYCLE, CROSS_TEAM_DEPENDENCY, ACCOUNTABLE_NOT_MANAGER, LAST_MANAGER_REQUIRED, RESPONSIBILITY_REQUIRED, INVITEE_NOT_REGISTERED, RISK_INPUT_INVALID, RISK_EVALUATION_FAILED, AI_SNAPSHOT_LEVEL_NOT_SUPPORTED, AI_PROVIDER_ERROR, AI_TIMEOUT, AI_QUOTA_EXCEEDED, AI_OUTPUT_INVALID, SERVICE_UNAVAILABLE, INTERNAL_ERROR]
             message: {type: string}
             details: {type: object, additionalProperties: true}
       example:
