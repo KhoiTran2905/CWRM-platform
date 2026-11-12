@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
   title: CWRM API
-  version: 0.1.0-draft
+  version: 0.2.0-draft
   description: |
     REST contract CWRM MVP, phủ S01-S12. Enum dùng UPPER_SNAKE_CASE; UI tự ánh xạ sang nhãn.
     Manager và Member là hai quyền hệ thống; role/skill chuyên môn và RACI là các dữ liệu khác nhau. Các giá trị x-permission là điều kiện truy cập theo quan hệ, không phải vai trò hệ thống mới.
-    Task status và assignment status không dùng chung. Task DONE và dữ liệu nghiệp vụ liên quan là chỉ đọc; status chỉ đổi qua action endpoint. Mọi timestamp là UTC ISO-8601; page/pageSize dùng cho list endpoint.
+    Task status và assignment status không dùng chung. Task DONE và dữ liệu nghiệp vụ liên quan là chỉ đọc; status chỉ đổi qua action endpoint. Mọi timestamp là UTC ISO-8601; `RiskSnapshot.evaluatedAt` kết thúc bằng Z. `Task.risk` luôn có mặt, null khi chưa có snapshot hợp lệ; `CurrentRisk` khi đó không có `snapshot`. page/pageSize dùng cho list endpoint.
 
     x-permission ghi điều kiện truy cập của từng operation. Giá trị là một mã hoặc một danh sách mã; danh sách nghĩa là chỉ cần thỏa một điều kiện. Guard backend kiểm tra các điều kiện này trên mọi request.
     | x-permission | Điều kiện |
@@ -43,7 +43,7 @@ info:
     | 422 | LAST_MANAGER_REQUIRED | Không thể gỡ hoặc hạ Manager cuối |
     | 422 | RESPONSIBILITY_REQUIRED | Thao tác sẽ làm mất A/R cần thiết |
     | 422 | INVITEE_NOT_REGISTERED | Chỉ mời tài khoản đã đăng ký |
-    | 422 | RISK_INPUT_INVALID | Risk input thiếu hoặc sai miền; không tạo snapshot giả |
+    | 422 | RISK_INPUT_INVALID | Risk input thiếu hoặc sai miền; details là danh sách { field, problem }; không tạo snapshot giả |
     | 422 | AI_SNAPSHOT_LEVEL_NOT_SUPPORTED | AI chỉ nhận snapshot Medium/High |
     | 500 | INTERNAL_ERROR | Lỗi hệ thống không dự kiến |
     | 502 | AI_PROVIDER_ERROR | Provider trả lỗi |
@@ -53,7 +53,7 @@ info:
     | 503 | RISK_EVALUATION_FAILED | Không thể đánh giá risk; snapshot trước không được coi là hiện hành |
     | 503 | SERVICE_UNAVAILABLE | GET /health không truy vấn được database |
 
-    Lỗi AI (502, 503) trả thêm trong details: retryable, recommendationId của bản ghi FAILED đã lưu và fallbackExplanation là diễn giải theo mẫu của rule. Risk và evidence vẫn đọc được qua các endpoint Risk.
+    `RISK_INPUT_INVALID.details` là danh sách `{ field, problem }`, không chứa stack trace. Lỗi AI (502, 503) trả thêm trong details: retryable, recommendationId của bản ghi FAILED đã lưu, snapshotId và fallbackExplanation dựng từ evidence đã lưu. Risk và evidence vẫn đọc được qua các endpoint Risk.
 servers:
   - url: http://localhost:3001/api/v1
     description: Máy phát triển mẫu; cổng sẽ chốt ở CWRM-12
@@ -1043,7 +1043,7 @@ paths:
       operationId: closeOpenWorkRegistration
       tags: [Assignment]
       summary: Đóng đăng ký Open Work
-      description: Quyền WORKSPACE_MANAGER; khi task Start hoặc đủ chỗ hệ thống tự đóng và chuyển request Pending còn lại sang REJECTED theo Scope.
+      description: Quyền WORKSPACE_MANAGER; khi task Start hoặc đủ chỗ hệ thống tự đóng và chuyển request PENDING còn lại sang REJECTED, đồng thời lưu lý do hệ thống ở `decisionReason`. Khi Manager đóng đăng ký, các request PENDING còn lại cũng chuyển sang REJECTED với lý do hệ thống được lưu ở `decisionReason`.
       x-permission: WORKSPACE_MANAGER
       requestBody: {$ref: '#/components/requestBodies/VersionAction'}
       responses:
@@ -1120,6 +1120,7 @@ paths:
         - {$ref: '#/components/parameters/PageSize'}
         - {name: workspaceId, in: query, schema: {type: string, format: uuid}}
         - {name: status, in: query, schema: {$ref: '#/components/schemas/RequestStatus'}}
+        - {name: taskId, in: query, description: 'Chỉ trả request của task này', schema: {type: string, format: uuid}}
       responses:
         '200': {description: Request phân trang, content: {application/json: {schema: {$ref: '#/components/schemas/RequestPage'}}}}
         '401': {$ref: '#/components/responses/Unauthorized'}
@@ -1282,11 +1283,11 @@ paths:
       operationId: createManagerIntervention
       tags: [Progress]
       summary: Can thiệp quản lý có lý do
-      description: Quyền WORKSPACE_MANAGER; Manager không phải R điều chỉnh progress hoặc effort thay R (Scope 6.3). Task phải IN_PROGRESS hoặc BLOCKED; reason bắt buộc và lưu audit trước/sau. Không đặt task status hay risk; deadline và priority sửa qua PATCH /tasks/{taskId}.
+      description: 'Quyền WORKSPACE_MANAGER; Manager không phải R điều chỉnh progress hoặc effort thay R (Scope 6.3). Task phải IN_PROGRESS hoặc BLOCKED; reason bắt buộc và lưu audit trước/sau. Response gồm `{ intervention, task }`; `intervention` được dựng từ audit record. Không đặt task status hay risk; deadline và priority sửa qua PATCH /tasks/{taskId}.'
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ManagerInterventionRequest'}}}}
       responses:
-        '200': {description: Task đã điều chỉnh, content: {application/json: {schema: {$ref: '#/components/schemas/Task'}}}}
+        '200': {description: Bản ghi can thiệp và Task sau cập nhật, content: {application/json: {schema: {$ref: '#/components/schemas/ManagerInterventionResult'}}}}
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
@@ -1408,7 +1409,7 @@ paths:
       operationId: addTaskDependency
       tags: [Task]
       summary: Thêm Finish-to-Start dependency
-      description: Quyền WORKSPACE_MANAGER; cùng team, không tự phụ thuộc/không vòng; successor phải còn TO_DO.
+      description: Quyền WORKSPACE_MANAGER; cùng team, không tự phụ thuộc/không vòng; successor phải còn TO_DO. Dependency tự trỏ (predecessor trùng successor) được coi là vòng và trả 422 DEPENDENCY_CYCLE; khác team trả 422 CROSS_TEAM_DEPENDENCY.
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DependencyCreateRequest'}}}}
       responses:
@@ -1488,7 +1489,7 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '422': {$ref: '#/components/responses/RuleViolation'}
+        '422': {$ref: '#/components/responses/RiskInputInvalid'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         '503': {$ref: '#/components/responses/RiskUnavailable'}
         default: {$ref: '#/components/responses/UnexpectedError'}
@@ -1524,14 +1525,18 @@ paths:
       operationId: getMyWorkDashboard
       tags: [Dashboard]
       summary: My Work
-      description: Quyền WORKSPACE_MEMBER; trả task chưa DONE mà người gọi là R hiệu lực trong workspace. Đề nghị Direct đang chờ phản hồi lấy ở GET /assignments, request của tôi ở GET /open-work-requests, danh sách Open Work của team ở GET /tasks.
+      description: Quyền WORKSPACE_MEMBER; trả riêng ba danh sách phân trang, gồm task chưa DONE mà người gọi là R hiệu lực, đề nghị Direct PENDING_ACCEPTANCE đang chờ người gọi, và request Open Work do người gọi gửi. `counts` là tổng số bản ghi của mỗi section trong workspace, không phụ thuộc trang hiện tại.
       x-permission: WORKSPACE_MEMBER
       parameters:
         - {$ref: '#/components/parameters/WorkspaceIdQuery'}
-        - {$ref: '#/components/parameters/Page'}
-        - {$ref: '#/components/parameters/PageSize'}
+        - {name: myTasksPage, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: myTasksPageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: pendingDirectAssignmentsPage, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: pendingDirectAssignmentsPageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: myOpenWorkRequestsPage, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: myOpenWorkRequestsPageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
       responses:
-        '200': {description: My Work phân trang, content: {application/json: {schema: {$ref: '#/components/schemas/TaskPage'}}}}
+        '200': {description: My Work với từng section phân trang độc lập, content: {application/json: {schema: {$ref: '#/components/schemas/MyWorkDashboard'}}}}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
@@ -1591,7 +1596,7 @@ paths:
       operationId: requestRiskExplanation
       tags: [AI]
       summary: Yêu cầu AI giải thích snapshot
-      description: Quyền WORKSPACE_MANAGER; chỉ nhận snapshot hiện hành của task có mức MEDIUM hoặc HIGH (409 SNAPSHOT_NOT_CURRENT, 422 AI_SNAPSHOT_LEVEL_NOT_SUPPORTED). Nếu đã có kết quả SUCCESS cho snapshot tương đương thì trả lại kết quả đó với reused=true và không gọi AI. Khi AI lỗi, backend lưu bản ghi FAILED rồi trả 502 hoặc 503 kèm details.fallbackExplanation; risk và evidence không bị ảnh hưởng, Manager có thể gọi lại. Provider và model do CWRM-16 chốt, không thuộc ADR-001.
+      description: Quyền WORKSPACE_MANAGER; chỉ nhận snapshot hiện hành của task có mức MEDIUM hoặc HIGH (409 SNAPSHOT_NOT_CURRENT, 422 AI_SNAPSHOT_LEVEL_NOT_SUPPORTED). Nếu đã có kết quả SUCCESS cho snapshot tương đương thì trả lại kết quả đó với reused=true và không gọi AI. Sau khi provider hoàn tất, backend kiểm tra lại snapshot hiện hành trước khi lưu/trả; nếu dữ liệu task đã đổi thì recommendation vẫn gắn với snapshot gốc, response có `isCurrent=false` và kết quả không được gắn vào snapshot mới. Khi AI lỗi, backend lưu bản ghi FAILED rồi trả 502 hoặc 503 kèm `snapshotId` và `fallbackExplanation` dựng từ evidence đã lưu; risk và evidence không bị ảnh hưởng, Manager có thể gọi lại. Provider và model do CWRM-16 chốt, không thuộc ADR-001.
       x-permission: WORKSPACE_MANAGER
       requestBody: {$ref: '#/components/requestBodies/EmptyOptional'}
       responses:
@@ -1713,13 +1718,25 @@ components:
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
+    RiskInputInvalid:
+      description: '422 RISK_INPUT_INVALID khi input risk thiếu hoặc sai miền; details là danh sách lỗi theo field, không có stack trace và không tạo snapshot.'
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          example:
+            error:
+              code: RISK_INPUT_INVALID
+              message: Không thể đánh giá risk vì thiếu dữ liệu bắt buộc.
+              details:
+                - field: deadlineAt
+                  problem: REQUIRED
     RiskUnavailable:
       description: Risk engine không hoàn tất; snapshot cũ không được coi là hiện hành (503 RISK_EVALUATION_FAILED)
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
     AIGatewayError:
-      description: 502 AI_PROVIDER_ERROR hoặc AI_OUTPUT_INVALID. details gồm retryable, recommendationId của bản ghi FAILED đã lưu và fallbackExplanation; risk/evidence vẫn đọc được
+      description: 502 AI_PROVIDER_ERROR hoặc AI_OUTPUT_INVALID. details gồm retryable, recommendationId của bản ghi FAILED đã lưu, snapshotId và fallbackExplanation dựng từ evidence đã lưu; risk/evidence vẫn đọc được.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
@@ -1730,9 +1747,10 @@ components:
               details:
                 retryable: true
                 recommendationId: 550e8400-e29b-41d4-a716-446655440062
+                snapshotId: 550e8400-e29b-41d4-a716-446655440051
                 fallbackExplanation: 'R03 kích hoạt vì còn 40 giờ tới deadline và tiến độ 30%, dưới 50%. Mức cơ sở MEDIUM được nâng lên HIGH do priority HIGH.'
     AIUnavailable:
-      description: 503 AI_TIMEOUT hoặc AI_QUOTA_EXCEEDED. details gồm retryable, recommendationId của bản ghi FAILED đã lưu và fallbackExplanation; risk/evidence vẫn đọc được
+      description: 503 AI_TIMEOUT hoặc AI_QUOTA_EXCEEDED. details gồm retryable, recommendationId của bản ghi FAILED đã lưu, snapshotId và fallbackExplanation dựng từ evidence đã lưu; risk/evidence vẫn đọc được.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
@@ -1743,6 +1761,7 @@ components:
               details:
                 retryable: true
                 recommendationId: 550e8400-e29b-41d4-a716-446655440062
+                snapshotId: 550e8400-e29b-41d4-a716-446655440051
                 fallbackExplanation: 'R03 kích hoạt vì còn 40 giờ tới deadline và tiến độ 30%, dưới 50%. Mức cơ sở MEDIUM được nâng lên HIGH do priority HIGH.'
   schemas:
     Health:
@@ -1863,13 +1882,21 @@ components:
         userId: {type: string, format: uuid}
     TeamMembership:
       type: object
-      required: [id, teamId, userId, status]
+      required: [id, teamId, userId, status, workspaceRole]
       properties:
         id: {type: string, format: uuid}
         teamId: {type: string, format: uuid}
         userId: {type: string, format: uuid}
         status: {type: string, enum: [ACTIVE, INACTIVE]}
+        workspaceRole: {type: string, enum: [MANAGER, MEMBER], description: 'Quyền của thành viên trong workspace; dùng để lọc Manager khi chọn A.'}
         displayName: {type: string}
+      example:
+        id: 550e8400-e29b-41d4-a716-446655440011
+        teamId: 550e8400-e29b-41d4-a716-446655440010
+        userId: 550e8400-e29b-41d4-a716-446655440001
+        status: ACTIVE
+        workspaceRole: MANAGER
+        displayName: Nguyễn An
     Label:
       type: object
       required: [id, workspaceId, name]
@@ -1940,20 +1967,47 @@ components:
       enum: [LOW, MEDIUM, HIGH, CRITICAL]
     Task:
       type: object
-      required: [id, teamId, title, accountableUserId, status, assignmentMode, priority, deadlineAt, deadlineType, requiredPeople, progress, version, responsibleUserIds, requiredRoleIds, requiredSkillIds, predecessorIds, successorIds]
+      required: [id, teamId, teamName, milestoneName, title, accountableUserId, accountableUser, status, assignmentMode, priority, deadlineAt, deadlineType, requiredPeople, progress, version, responsibleUserIds, responsibleUsers, requiredRoleIds, requiredSkillIds, predecessorIds, predecessors, successorIds, risk, availableActions, myRequestStatus, updatedAt]
       properties:
         id: {type: string, format: uuid}
         teamId: {type: string, format: uuid}
+        teamName: {type: string}
         milestoneId: {type: string, format: uuid, nullable: true}
+        milestoneName: {type: string, nullable: true}
         title: {type: string}
         description: {type: string, nullable: true}
         accountableUserId: {type: string, format: uuid}
+        accountableUser:
+          type: object
+          required: [userId, displayName]
+          properties:
+            userId: {type: string, format: uuid}
+            displayName: {type: string}
         responsibleUserIds: {type: array, description: R từ assignment ACCEPTED hiệu lực, items: {type: string, format: uuid}}
+        responsibleUsers:
+          type: array
+          description: R hiệu lực kèm tên hiển thị.
+          items:
+            type: object
+            required: [userId, displayName]
+            properties:
+              userId: {type: string, format: uuid}
+              displayName: {type: string}
         consultantUserIds: {type: array, items: {type: string, format: uuid}}
         informedUserIds: {type: array, items: {type: string, format: uuid}}
         requiredRoleIds: {type: array, items: {type: string, format: uuid}}
         requiredSkillIds: {type: array, items: {type: string, format: uuid}}
         predecessorIds: {type: array, items: {type: string, format: uuid}}
+        predecessors:
+          type: array
+          description: Predecessor kèm dữ liệu tối thiểu để hiển thị danh sách mà không gọi tra cứu từng task.
+          items:
+            type: object
+            required: [taskId, title, status]
+            properties:
+              taskId: {type: string, format: uuid}
+              title: {type: string}
+              status: {$ref: '#/components/schemas/TaskStatus'}
         successorIds: {type: array, items: {type: string, format: uuid}}
         status: {$ref: '#/components/schemas/TaskStatus'}
         assignmentMode: {type: string, enum: [DIRECT, OPEN_WORK]}
@@ -1970,20 +2024,48 @@ components:
         openBlockerCount: {type: integer, minimum: 0}
         occupiedSlots: {type: integer, minimum: 0, description: 'Số chỗ đang giữ, gồm R ACCEPTED hiệu lực và đề nghị DIRECT đang PENDING_ACCEPTANCE. Không vượt requiredPeople'}
         affectedTaskCount: {type: integer, minimum: 0, description: 'Số successor chưa DONE ở mọi tầng, không đếm trùng (Scope S09)'}
-        risk: {$ref: '#/components/schemas/TaskRiskSummary'}
+        risk:
+          allOf:
+            - {$ref: '#/components/schemas/TaskRiskSummary'}
+          type: object
+          nullable: true
+          description: 'null nếu task chưa có snapshot risk hợp lệ.'
+        availableActions:
+          type: array
+          description: >
+            Gợi ý thao tác mà người gọi có thể làm ngay trên task để UI hiển thị hoặc vô hiệu hóa nút.
+            Đây không thay thế kiểm tra server; thao tác thật vẫn có thể trả 409 hoặc 422.
+          items:
+            type: string
+            enum: [EDIT_TASK, UPDATE_CAPACITY, TRANSFER_ACCOUNTABILITY, START, UPDATE_PROGRESS, SUBMIT_REVIEW, APPROVE, RETURN, CREATE_MANAGEMENT_INTERVENTION, CREATE_DIRECT_ASSIGNMENT, RESPOND_TO_ASSIGNMENT, END_ASSIGNMENT, OPEN_OPEN_WORK, CLOSE_OPEN_WORK, REQUEST_OPEN_WORK, WITHDRAW_REQUEST, APPROVE_OPEN_WORK_REQUEST, REJECT_OPEN_WORK_REQUEST, UPDATE_RACI_CONTACTS, CREATE_BLOCKER, RESOLVE_BLOCKER, CREATE_COMMENT, ADD_DEPENDENCY, REMOVE_DEPENDENCY, EVALUATE_RISK, REQUEST_AI_EXPLANATION]
+        myRequestStatus:
+          type: string
+          nullable: true
+          enum: [PENDING, APPROVED, REJECTED, WITHDRAWN, null]
+          description: Trạng thái request Open Work gần nhất của người gọi trên task này (cùng bộ giá trị với RequestStatus); null nếu chưa gửi request.
         startedAt: {type: string, format: date-time, nullable: true}
         completedAt: {type: string, format: date-time, nullable: true}
         version: {type: integer, minimum: 1}
         createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
       example:
         id: 550e8400-e29b-41d4-a716-446655440103
         teamId: 550e8400-e29b-41d4-a716-446655440010
+        teamName: Marketing
+        milestoneName: null
         title: Thiết kế poster chiến dịch Marketing
         accountableUserId: 550e8400-e29b-41d4-a716-446655440001
+        accountableUser:
+          userId: 550e8400-e29b-41d4-a716-446655440001
+          displayName: Nguyễn An
         responsibleUserIds: [550e8400-e29b-41d4-a716-446655440003]
+        responsibleUsers:
+          - userId: 550e8400-e29b-41d4-a716-446655440003
+            displayName: Trần Bình
         requiredRoleIds: [550e8400-e29b-41d4-a716-446655440020]
         requiredSkillIds: [550e8400-e29b-41d4-a716-446655440021]
         predecessorIds: []
+        predecessors: []
         successorIds: [550e8400-e29b-41d4-a716-446655440104]
         status: BLOCKED
         assignmentMode: OPEN_WORK
@@ -2001,16 +2083,21 @@ components:
           riskLevel: HIGH
           evaluatedAt: '2026-11-10T03:00:00Z'
           isCurrent: true
+          triggeredRules: [R03]
+        availableActions: [UPDATE_PROGRESS, CREATE_BLOCKER, CREATE_COMMENT]
+        myRequestStatus: null
         version: 4
+        updatedAt: '2026-11-10T03:00:00Z'
     TaskRiskSummary:
       type: object
-      description: Tóm tắt risk của task để hiển thị ở danh sách và dashboard. Task không có trường risk khi chưa từng được đánh giá thành công.
-      required: [snapshotId, riskLevel, evaluatedAt, isCurrent]
+      description: Tóm tắt risk của task để hiển thị ở danh sách và dashboard; Task.risk là null nếu chưa có snapshot hợp lệ.
+      required: [snapshotId, riskLevel, evaluatedAt, isCurrent, triggeredRules]
       properties:
         snapshotId: {type: string, format: uuid}
         riskLevel: {$ref: '#/components/schemas/RiskLevel'}
         evaluatedAt: {type: string, format: date-time}
         isCurrent: {type: boolean, description: 'false khi dữ liệu task đã đổi sau snapshot hoặc lần đánh giá gần nhất lỗi'}
+        triggeredRules: {type: array, uniqueItems: true, items: {type: string, pattern: '^R(0[1-9]|1[0-2])$'}, description: 'Rule IDs R01–R12 đã kích hoạt, dùng cho dashboard và danh sách task.'}
     TaskCreateRequest:
       type: object
       required: [teamId, title, accountableUserId, priority, deadlineAt, deadlineType, requiredPeople, assignmentMode]
@@ -2176,12 +2263,32 @@ components:
         assignment: {$ref: '#/components/schemas/Assignment'}
     Eligibility:
       type: object
-      required: [eligible, reasons]
+      required: [eligible, reasons, matchedRoleIds, missingRoleIds, missingSkillIds]
       properties:
         eligible: {type: boolean}
-        reasons: {type: array, items: {type: string}}
+        reasons:
+          type: array
+          items:
+            type: object
+            required: [code, params]
+            properties:
+              code: {type: string, enum: [NOT_TEAM_MEMBER, MISSING_REQUIRED_ROLE, MISSING_REQUIRED_SKILL, REGISTRATION_CLOSED, TASK_NOT_TO_DO, REQUEST_ALREADY_PENDING, ALREADY_RESPONSIBLE, CAPACITY_FULL]}
+              params: {type: object, additionalProperties: true}
         matchedRoleIds: {type: array, items: {type: string, format: uuid}}
+        missingRoleIds: {type: array, items: {type: string, format: uuid}}
         missingSkillIds: {type: array, items: {type: string, format: uuid}}
+      example:
+        eligible: false
+        reasons:
+          - code: MISSING_REQUIRED_ROLE
+            params:
+              roleIds: [550e8400-e29b-41d4-a716-446655440020]
+          - code: MISSING_REQUIRED_SKILL
+            params:
+              skillIds: [550e8400-e29b-41d4-a716-446655440021]
+        matchedRoleIds: []
+        missingRoleIds: [550e8400-e29b-41d4-a716-446655440020]
+        missingSkillIds: [550e8400-e29b-41d4-a716-446655440021]
     RaciView:
       type: object
       required: [accountableUserId, responsibleUserIds, consultantUserIds, informedUserIds]
@@ -2238,6 +2345,80 @@ components:
         expectedVersion: {type: integer, minimum: 1}
         progress: {type: integer, minimum: 0, maximum: 100}
         effortActualHours: {type: number, minimum: 0}
+    ManagerIntervention:
+      type: object
+      description: Bản ghi audit được trình bày thành response intervention; không phải bảng lưu riêng.
+      required: [id, taskId, actorUserId, reason, progressBefore, progressAfter, effortActualHoursBefore, effortActualHoursAfter, createdAt]
+      properties:
+        id: {type: string, format: uuid, description: ID của audit record.}
+        taskId: {type: string, format: uuid}
+        actorUserId: {type: string, format: uuid}
+        reason: {type: string}
+        progressBefore: {type: integer, minimum: 0, maximum: 100}
+        progressAfter: {type: integer, minimum: 0, maximum: 100}
+        effortActualHoursBefore: {type: number, minimum: 0, nullable: true}
+        effortActualHoursAfter: {type: number, minimum: 0, nullable: true}
+        createdAt: {type: string, format: date-time}
+      example:
+        id: 550e8400-e29b-41d4-a716-446655440081
+        taskId: 550e8400-e29b-41d4-a716-446655440103
+        actorUserId: 550e8400-e29b-41d4-a716-446655440001
+        reason: Điều chỉnh tiến độ sau khi rà soát công việc.
+        progressBefore: 25
+        progressAfter: 30
+        effortActualHoursBefore: null
+        effortActualHoursAfter: 4
+        createdAt: '2026-11-10T03:00:00Z'
+    ManagerInterventionResult:
+      type: object
+      required: [intervention, task]
+      properties:
+        intervention: {$ref: '#/components/schemas/ManagerIntervention'}
+        task: {$ref: '#/components/schemas/Task'}
+      example:
+        intervention:
+          id: 550e8400-e29b-41d4-a716-446655440081
+          taskId: 550e8400-e29b-41d4-a716-446655440103
+          actorUserId: 550e8400-e29b-41d4-a716-446655440001
+          reason: Điều chỉnh tiến độ sau khi rà soát công việc.
+          progressBefore: 25
+          progressAfter: 30
+          effortActualHoursBefore: null
+          effortActualHoursAfter: 4
+          createdAt: '2026-11-10T03:00:00Z'
+        task:
+          id: 550e8400-e29b-41d4-a716-446655440103
+          teamId: 550e8400-e29b-41d4-a716-446655440010
+          teamName: Marketing
+          milestoneName: null
+          title: Thiết kế poster chiến dịch Marketing
+          accountableUserId: 550e8400-e29b-41d4-a716-446655440001
+          accountableUser: {userId: 550e8400-e29b-41d4-a716-446655440001, displayName: Nguyễn An}
+          responsibleUserIds: [550e8400-e29b-41d4-a716-446655440003]
+          responsibleUsers:
+            - {userId: 550e8400-e29b-41d4-a716-446655440003, displayName: Trần Bình}
+          requiredRoleIds: [550e8400-e29b-41d4-a716-446655440020]
+          requiredSkillIds: [550e8400-e29b-41d4-a716-446655440021]
+          predecessorIds: []
+          predecessors: []
+          successorIds: [550e8400-e29b-41d4-a716-446655440104]
+          status: IN_PROGRESS
+          assignmentMode: OPEN_WORK
+          priority: HIGH
+          deadlineAt: '2026-11-11T19:00:00Z'
+          deadlineType: FLEXIBLE
+          requiredPeople: 1
+          progress: 30
+          risk:
+            snapshotId: 550e8400-e29b-41d4-a716-446655440051
+            riskLevel: HIGH
+            evaluatedAt: '2026-11-10T03:00:00Z'
+            isCurrent: true
+            triggeredRules: [R03]
+          availableActions: [UPDATE_PROGRESS, CREATE_COMMENT]
+          myRequestStatus: null
+          version: 5
+          updatedAt: '2026-11-10T03:00:00Z'
     Blocker:
       type: object
       required: [id, taskId, createdByUserId, description, status, openedAt]
@@ -2311,16 +2492,23 @@ components:
       type: object
       required: [id, source, field, value]
       properties:
-        id: {type: string, description: Ổn định trong phạm vi một snapshot, example: ev-01}
+        id: {type: string, description: 'Ổn định trong phạm vi một snapshot, example: ev-01'}
         source: {type: string, enum: [task, evaluation, rule, impact]}
         ruleId: {type: string, pattern: '^R(0[1-9]|1[0-2])$'}
-        field: {type: string}
+        field:
+          type: string
+          description: >
+            Tên field camelCase. Các field hiện dùng gồm deadlineAt, progress, remainingHours,
+            overdueHours, priority, deadlineType, affectedTaskCount và các ngưỡng
+            remainingHoursMinExclusive, remainingHoursMaxInclusive, progressMaxExclusive.
+            Evidence ngưỡng dùng source=rule. Field và unit không bị khóa bằng enum;
+            unit hiện dùng là hours và percent, giá trị khác bổ sung theo đặc tả R04–R12 của CWRM-15.
         value:
           anyOf:
             - {type: string, nullable: true}
             - {type: number, nullable: true}
             - {type: boolean, nullable: true}
-        unit: {type: string}
+        unit: {type: string, description: 'Unit hiện dùng gồm hours và percent; không phải enum.'}
     RiskSnapshot:
       type: object
       required: [id, taskId, riskLevel, baseLevel, evaluatedAt, ruleVersion, triggeredRules, evidence, inputFingerprint, triggerSource]
@@ -2329,11 +2517,11 @@ components:
         taskId: {type: string, format: uuid}
         riskLevel: {$ref: '#/components/schemas/RiskLevel'}
         baseLevel: {$ref: '#/components/schemas/RiskLevel'}
-        evaluatedAt: {type: string, format: date-time}
+        evaluatedAt: {type: string, format: date-time, description: 'Thời điểm UTC; giá trị kết thúc bằng Z.'}
         ruleVersion: {type: string, minLength: 1}
         triggeredRules: {type: array, uniqueItems: true, items: {type: string, pattern: '^R(0[1-9]|1[0-2])$'}}
         evidence: {type: array, items: {$ref: '#/components/schemas/RiskEvidence'}}
-        inputFingerprint: {type: string, minLength: 1, description: 'Đề xuất dạng sha256:<hex-64> tính trên dữ liệu gốc của task (xem CWRM-11_Architecture mục 4), chờ Ban góp ý. Giá trị trong example chỉ là chuỗi minh họa, không phải digest thật'}
+        inputFingerprint: {type: string, pattern: '^sha256:[0-9a-f]{64}$', description: 'SHA-256 của JSON chuẩn hóa dữ liệu gốc cùng ruleVersion; không gồm evaluatedAt hay số giờ suy ra. Digest trong example chỉ để minh họa pattern.'}
         triggerSource: {type: string, enum: [EVENT, HOURLY, MANUAL]}
       example:
         id: 550e8400-e29b-41d4-a716-446655440051
@@ -2341,23 +2529,60 @@ components:
         riskLevel: HIGH
         baseLevel: MEDIUM
         evaluatedAt: '2026-11-10T03:00:00Z'
-        ruleVersion: example-only-pending-Ban
+        ruleVersion: example-rule-version
         triggeredRules: [R03]
         evidence:
-          - {id: ev-01, source: task, ruleId: R03, field: deadline, value: '2026-11-11T19:00:00Z'}
-          - {id: ev-02, source: evaluation, ruleId: R03, field: remainingHours, value: 40, unit: hours}
-          - {id: ev-03, source: task, ruleId: R03, field: progress, value: 30, unit: percent}
-          - {id: ev-04, source: impact, field: priority, value: HIGH}
-        inputFingerprint: example-only-not-a-real-hash
+          - id: ev-01
+            source: task
+            ruleId: R03
+            field: deadlineAt
+            value: '2026-11-11T19:00:00Z'
+          - id: ev-02
+            source: evaluation
+            ruleId: R03
+            field: remainingHours
+            value: 40
+            unit: hours
+          - id: ev-03
+            source: task
+            ruleId: R03
+            field: progress
+            value: 30
+            unit: percent
+          - id: ev-04
+            source: impact
+            field: priority
+            value: HIGH
+          - id: ev-05
+            source: rule
+            ruleId: R03
+            field: remainingHoursMinExclusive
+            value: 24
+            unit: hours
+          - id: ev-06
+            source: rule
+            ruleId: R03
+            field: remainingHoursMaxInclusive
+            value: 48
+            unit: hours
+          - id: ev-07
+            source: rule
+            ruleId: R03
+            field: progressMaxExclusive
+            value: 50
+            unit: percent
+        inputFingerprint: sha256:0000000000000000000000000000000000000000000000000000000000000000
         triggerSource: MANUAL
     CurrentRisk:
       type: object
-      description: snapshot là snapshot hợp lệ gần nhất của task; không có trường này khi task chưa từng được đánh giá thành công.
+      description: >-
+        snapshot là snapshot hợp lệ gần nhất của task. Nếu task chưa từng có snapshot hợp lệ,
+        thuộc tính snapshot không có trong response; Task.risk ở trạng thái đó là null.
       required: [isCurrent]
       properties:
         snapshot: {$ref: '#/components/schemas/RiskSnapshot'}
         isCurrent: {type: boolean, description: 'false khi dữ liệu task đã đổi sau snapshot hoặc lần đánh giá gần nhất lỗi'}
-        evaluationError: {type: string, nullable: true, enum: [RISK_INPUT_INVALID, RISK_EVALUATION_FAILED, null], description: Mã lỗi của lần đánh giá gần nhất nếu thất bại}
+        evaluationError: {type: string, nullable: true, enum: [RISK_INPUT_INVALID, RISK_EVALUATION_FAILED, null], description: Mã lỗi của lần đánh giá gần nhất nếu thất bại. null nghĩa là không có lỗi gần nhất.}
     RiskEvaluationResult:
       type: object
       required: [status, snapshot, isCurrent]
@@ -2388,7 +2613,16 @@ components:
               rationale: {type: string}
               caveat: {type: string}
         errorCode: {type: string, nullable: true}
-        inputFingerprint: {type: string}
+        inputFingerprint: {type: string, pattern: '^sha256:[0-9a-f]{64}$', description: 'Theo cùng pattern với RiskSnapshot.inputFingerprint; digest trong example chỉ minh họa.'}
+        latencyMs: {type: integer, minimum: 0, nullable: true, description: Telemetry tùy chọn do provider trả về.}
+        usage:
+          type: object
+          nullable: true
+          description: Telemetry tùy chọn; không lưu prompt thô.
+          required: [inputTokens, outputTokens]
+          properties:
+            inputTokens: {type: integer, minimum: 0}
+            outputTokens: {type: integer, minimum: 0}
         createdAt: {type: string, format: date-time}
       example:
         id: 550e8400-e29b-41d4-a716-446655440061
@@ -2401,14 +2635,18 @@ components:
         recommendations:
           - {action: Rà soát blocker và xác định người xử lý, rationale: Blocker có thể cản tiến độ, caveat: Risk không tự xác định nguyên nhân blocker.}
           - {action: Manager cân nhắc bổ sung R nếu còn capacity, rationale: Có thể chia phần việc còn lại, caveat: Cần Member Accepted và cập nhật số người cần hợp lệ.}
-        inputFingerprint: example-only-not-a-real-hash
+        inputFingerprint: sha256:0000000000000000000000000000000000000000000000000000000000000000
+        latencyMs: 1840
+        usage:
+          inputTokens: 780
+          outputTokens: 220
         createdAt: '2026-11-10T03:02:00Z'
     AIExplanationResult:
       type: object
       required: [recommendation, isCurrent, reused]
       properties:
         recommendation: {$ref: '#/components/schemas/AIRecommendation'}
-        isCurrent: {type: boolean, description: 'true khi snapshot hiện hành của task có cùng inputFingerprint, riskLevel, baseLevel và triggeredRules với snapshot của kết quả này'}
+        isCurrent: {type: boolean, description: 'true khi cùng task có snapshot hiện hành với cùng inputFingerprint, riskLevel, baseLevel, triggeredRules và evidence được tham chiếu còn nguyên ý nghĩa'}
         reused: {type: boolean, description: 'true khi trả lại kết quả SUCCESS đã lưu, không gọi AI'}
         fallbackExplanation: {type: string, description: 'Chỉ có khi recommendation.status là FAILED. Diễn giải theo mẫu của rule'}
     Alert:
@@ -2448,16 +2686,45 @@ components:
         createdAt: {type: string, format: date-time}
     Dashboard:
       type: object
-      required: [countsByStatus, countsByRiskLevel, tasks, page, pageSize, total]
+      required: [countsByStatus, countsByRiskLevel, pendingOpenWorkRequestCount, awaitingReviewCount, tasks, page, pageSize, total]
       properties:
         countsByStatus: {type: object, description: 'Số task theo từng TaskStatus trong phạm vi bộ lọc team', additionalProperties: {type: integer, minimum: 0}}
         countsByRiskLevel: {type: object, description: 'Số task chưa DONE theo từng RiskLevel', additionalProperties: {type: integer, minimum: 0}}
         pendingOpenWorkRequestCount: {type: integer, minimum: 0, description: Số request Open Work đang PENDING chờ duyệt}
         awaitingReviewCount: {type: integer, minimum: 0, description: Số task REVIEW mà người gọi là A}
         tasks: {type: array, items: {$ref: '#/components/schemas/Task'}}
-        page: {type: integer}
-        pageSize: {type: integer}
-        total: {type: integer}
+        page: {type: integer, minimum: 1}
+        pageSize: {type: integer, minimum: 1}
+        total: {type: integer, minimum: 0}
+      example:
+        countsByStatus: {TO_DO: 0, IN_PROGRESS: 0, BLOCKED: 0, REVIEW: 0, DONE: 0}
+        countsByRiskLevel: {LOW: 0, MEDIUM: 0, HIGH: 0}
+        pendingOpenWorkRequestCount: 0
+        awaitingReviewCount: 0
+        tasks: []
+        page: 1
+        pageSize: 20
+        total: 0
+    MyWorkDashboard:
+      type: object
+      description: Ba section được phân trang độc lập; counts đếm toàn bộ bản ghi theo workspace, không chỉ trang hiện tại.
+      required: [myTasks, pendingDirectAssignments, myOpenWorkRequests, counts]
+      properties:
+        myTasks: {$ref: '#/components/schemas/TaskPage'}
+        pendingDirectAssignments: {$ref: '#/components/schemas/AssignmentPage'}
+        myOpenWorkRequests: {$ref: '#/components/schemas/RequestPage'}
+        counts:
+          type: object
+          required: [myTasks, pendingDirectAssignments, myOpenWorkRequests]
+          properties:
+            myTasks: {type: integer, minimum: 0}
+            pendingDirectAssignments: {type: integer, minimum: 0}
+            myOpenWorkRequests: {type: integer, minimum: 0}
+      example:
+        myTasks: {items: [], page: 1, pageSize: 20, total: 0}
+        pendingDirectAssignments: {items: [], page: 1, pageSize: 20, total: 0}
+        myOpenWorkRequests: {items: [], page: 1, pageSize: 20, total: 0}
+        counts: {myTasks: 0, pendingDirectAssignments: 0, myOpenWorkRequests: 0}
     PageMeta:
       type: object
       required: [page, pageSize, total]
@@ -2603,7 +2870,16 @@ components:
               type: string
               enum: [VALIDATION_ERROR, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VERSION_CONFLICT, CAPACITY_EXCEEDED, UNIQUE_CONFLICT, SNAPSHOT_NOT_CURRENT, INVALID_STATE_TRANSITION, NOT_ELIGIBLE, PREDECESSOR_NOT_DONE, OPEN_BLOCKERS_EXIST, NO_ACCEPTED_RESPONSIBLE, DEPENDENCY_CYCLE, CROSS_TEAM_DEPENDENCY, ACCOUNTABLE_NOT_MANAGER, LAST_MANAGER_REQUIRED, RESPONSIBILITY_REQUIRED, INVITEE_NOT_REGISTERED, RISK_INPUT_INVALID, RISK_EVALUATION_FAILED, AI_SNAPSHOT_LEVEL_NOT_SUPPORTED, AI_PROVIDER_ERROR, AI_TIMEOUT, AI_QUOTA_EXCEEDED, AI_OUTPUT_INVALID, SERVICE_UNAVAILABLE, INTERNAL_ERROR]
             message: {type: string}
-            details: {type: object, additionalProperties: true}
+            details:
+              oneOf:
+                - {type: object, additionalProperties: true}
+                - type: array
+                  items:
+                    type: object
+                    required: [field, problem]
+                    properties:
+                      field: {type: string}
+                      problem: {type: string}
       example:
         error:
           code: PREDECESSOR_NOT_DONE

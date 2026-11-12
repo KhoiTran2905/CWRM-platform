@@ -1,6 +1,6 @@
 # CWRM-11 — Kiến trúc hệ thống
 
-**Trạng thái:** bản thiết kế 0.1.0-draft cho CWRM-11; ADR kỹ thuật được Tech Lead chấp thuận ngày 11/11/2026, đang chờ review của Hiệp và Ban. Phạm vi nghiệp vụ theo Scope v0.1; không ghi nhận phê duyệt toàn nhóm.
+**Trạng thái:** bản thiết kế cập nhật cùng contract 0.2.0-draft ngày 12/11/2026; đã ghi nhận phản hồi của Hiệp và Ban. ADR kỹ thuật được Tech Lead chấp thuận ngày 11/11/2026. Phạm vi nghiệp vụ theo Scope v0.1; không ghi nhận phê duyệt toàn nhóm.
 
 ## 1. Ranh giới và cấu trúc triển khai
 
@@ -107,9 +107,9 @@ flowchart LR
 
 ## 4. Risk Engine và interface nội bộ
 
-Ban sở hữu rule engine. Backend chuẩn bị context và thời điểm đánh giá, gọi hàm thuần, rồi lưu snapshot/evidence và cập nhật alert. Cùng context, evaluatedAt và cấu hình rule phải cho cùng kết quả. Chỉ task chưa DONE được đánh giá; task Done giữ snapshot lịch sử và rời dashboard risk đang hoạt động.
+Ban sở hữu rule engine. Backend cấp `RiskTaskContext`, thời điểm đánh giá UTC và cấu hình rule có phiên bản cho hàm thuần. Engine trả mức risk/base, rule IDs, evidence, thời điểm đánh giá và phiên bản rule; engine không lấy giờ toàn cục, đọc DB hay gọi HTTP. Backend tính `inputFingerprint`, cấp `id` và `triggerSource` khi ghép kết quả để lưu snapshot cùng evidence và cập nhật alert. Cùng context, `evaluatedAt` và cấu hình rule phải cho cùng kết quả. Chỉ task chưa DONE được đánh giá; task Done giữ snapshot lịch sử và rời dashboard risk đang hoạt động.
 
-### Kiểu context đề xuất
+### Kiểu context đầu vào
 
 ```ts
 type RiskEvaluationSource = "EVENT" | "HOURLY" | "MANUAL";
@@ -153,14 +153,13 @@ type RiskTaskContext = {
 
 remainingHours được tính từ deadlineAt và evaluatedAt; blockedHours là thời gian liên tục từ đầu đợt Blocked đang mở, không reset khi chỉ giải quyết một trong nhiều blocker. R06/R07 dùng predecessor trực tiếp; affectedTasks dùng successor mọi tầng, đếm task khác nhau và loại task Done. maxWorkload đếm task chưa Done mà người đó là R Accepted hiệu lực, thuộc cùng workspace và có status To Do/In Progress/Blocked; Review không tính workload hoạt động theo Scope.
 
-### Kiểu kết quả đề xuất
+### Kiểu kết quả engine
 
 ```ts
 type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 type RiskRuleId = string; // service chỉ chấp nhận pattern ^R(0[1-9]|1[0-2])$
 
 type RiskEvaluation = {
-  taskId: string;
   riskLevel: RiskLevel;
   baseLevel: RiskLevel;
   evaluatedAt: string;
@@ -174,27 +173,33 @@ type RiskEvaluation = {
     value: string | number | boolean | null;
     unit?: string;
   }>;
+};
+
+type RiskSnapshot = RiskEvaluation & {
+  id: string;
+  taskId: string;
   inputFingerprint: string;
+  triggerSource: RiskEvaluationSource;
 };
 ```
 
 Hợp đồng này cho phép R01–R12 (không khóa vào R01–R03 của POC). Không tính xác suất và không nhận mức risk từ Manager. Đầu vào thiếu/sai miền sinh lỗi dữ liệu rõ; không thay bằng 0 và không tạo snapshot giả. ruleVersion được cấu hình/version hóa phía backend, không suy ra từ tên provider.
 
-### Fingerprint đầu vào — đề xuất, chờ Ban góp ý
+### Fingerprint đầu vào — định dạng đã thống nhất, chi tiết chuẩn hóa còn mở
 
-CWRM-15 nêu mục đích của inputFingerprint là phát hiện kết quả AI đã cũ khi dữ liệu task thay đổi, và để CWRM-11/CWRM-16 chốt thuật toán. Đề xuất của CWRM-11:
+CWRM-15 nêu mục đích của `inputFingerprint` là phát hiện kết quả AI đã cũ khi dữ liệu task thay đổi. Theo phản hồi của Ban, backend tính SHA-256 trên JSON chuẩn hóa của dữ liệu gốc và kết quả có dạng `sha256:<hex-64>`.
 
-- inputFingerprint là chuỗi `sha256:` nối 64 ký tự hex của SHA-256 trên JSON UTF-8 đã chuẩn hóa: khóa object sắp theo thứ tự từ điển, không khoảng trắng thừa, chuỗi chuẩn hóa NFC, thời điểm ở dạng UTC ISO-8601 có hậu tố Z, mảng sắp theo khóa ổn định (taskId, blockerId, userId).
-- Chỉ băm **dữ liệu gốc** có thể làm đổi kết quả rule: taskId, status, progress, deadlineAt, priority, deadlineType, hasAcceptedResponsible, blockedSince, openBlockers (blockerId, openedAt), predecessorStates (taskId, status, deadlineAt), affectedTasks, milestone (milestoneId, deadlineAt, hoặc null), activeResponsibleWorkloads (userId nội bộ, activeTaskCount) và ruleVersion.
-- Không băm evaluatedAt và các giá trị suy ra từ thời điểm đánh giá (remainingHours, blockedHours, milestone.remainingHours). Nếu băm các giá trị này, fingerprint đổi ở mọi lần đánh giá dù dữ liệu task không đổi, và việc tái sử dụng kết quả AI theo Scope S12 không bao giờ xảy ra.
+- Backend băm **dữ liệu gốc** có thể làm đổi kết quả rule: taskId, status, progress, deadlineAt, priority, deadlineType, hasAcceptedResponsible, blockedSince, openBlockers (blockerId, openedAt), predecessorStates (taskId, status, deadlineAt), affectedTasks, milestone (milestoneId, deadlineAt, hoặc null), activeResponsibleWorkloads (userId nội bộ, activeTaskCount) và `ruleVersion`.
+- Không băm `evaluatedAt` và các giá trị suy ra từ thời điểm đánh giá (`remainingHours`, `blockedHours`, `milestone.remainingHours`). Nếu băm các giá trị này, fingerprint đổi ở mọi lần đánh giá dù dữ liệu task không đổi, và việc tái sử dụng kết quả AI theo Scope S12 không bao giờ xảy ra.
 - Không băm tên, email, nội dung mô tả hay dữ liệu không tham gia rule.
+- Mảng biểu diễn tập hợp được sắp theo khóa ổn định; mảng có thứ tự ý nghĩa giữ nguyên thứ tự. Quy tắc chính xác cho null/thiếu và thứ tự từng mảng, cùng fixture có digest cố định để đối chiếu, sẽ được chốt khi triển khai Risk Engine trong backend.
 
 Thời gian trôi có thể làm đổi rule kích hoạt trong khi fingerprint giữ nguyên, nên tính hiện hành không chỉ dựa vào fingerprint:
 
 - Snapshot là hiện hành (isCurrent=true) khi nó là snapshot mới nhất của task, lần đánh giá gần nhất thành công và fingerprint tính trên dữ liệu hiện tại bằng inputFingerprint của snapshot.
-- Một kết quả AI là hiện hành khi snapshot hiện hành của task có cùng inputFingerprint, riskLevel, baseLevel và triggeredRules với snapshot mà kết quả đó gắn vào. Nhờ vậy lần đánh giá theo giờ không làm kết quả AI mất hiệu lực nếu kết luận risk không đổi.
+- Một kết quả AI là hiện hành khi snapshot hiện hành của cùng task có cùng `inputFingerprint`, `riskLevel`, `baseLevel` và tập `triggeredRules` với snapshot mà kết quả đó gắn vào. Khi tái sử dụng, backend cũng kiểm tra evidence được tham chiếu còn tồn tại và giữ nguyên ý nghĩa; evidence đổi nghĩa hoặc biến mất thì cần đánh giá lại việc dùng kết quả đã lưu.
 
-Ban cần góp ý về danh sách trường, thứ tự mảng và cách xử lý định danh nội bộ trước khi CWRM-12 đóng schema.
+Chi tiết null/thiếu, thứ tự cụ thể của từng mảng và fixture digest cố định còn mở để chốt trong quá trình triển khai backend.
 
 ## 5. Đánh giá lại Risk và Alert
 
@@ -287,7 +292,7 @@ sequenceDiagram
 
 Khi đánh giá thành công, thay đổi nghiệp vụ, snapshot/evidence và alert được ghi trong cùng một transaction. Khi Risk Engine không đánh giá được (context thiếu hoặc sai miền, hoặc engine lỗi), backend không tạo snapshot giả và không trình bày snapshot trước như kết quả mới.
 
-**Đề xuất cho trường hợp lỗi, chưa chốt:** vẫn commit thay đổi nghiệp vụ hợp lệ, ghi audit lỗi đánh giá và trả risk.isCurrent=false để UI báo risk chưa cập nhật; lần đánh giá HOURLY hoặc MANUAL kế tiếp thử lại. Lý do: lỗi của engine không nên làm người dùng mất một thao tác nghiệp vụ hợp lệ, còn NQ05 chỉ yêu cầu báo trạng thái và không hiển thị snapshot cũ như mới. Phương án thay thế là all-or-nothing, tức rollback cả thay đổi nghiệp vụ khi đánh giá lỗi. OpenAPI 0.1.0-draft đang theo đề xuất này: các endpoint thay đổi nghiệp vụ không trả lỗi risk, chỉ `POST /tasks/{taskId}/risk-snapshots` trả 422 RISK_INPUT_INVALID hoặc 503 RISK_EVALUATION_FAILED. Cần Ban góp ý và chốt khi làm CWRM-12.
+Theo phản hồi của Ban, nếu engine lỗi sau cập nhật nghiệp vụ hợp lệ thì backend vẫn commit thay đổi, ghi audit lỗi, giữ snapshot hợp lệ gần nhất ở trạng thái `isCurrent=false` và thử lại ở lần đánh giá sau. Đánh giá lại thủ công trả 422 `RISK_INPUT_INVALID` khi input thiếu/sai miền và 503 `RISK_EVALUATION_FAILED` khi engine lỗi. Với `RISK_INPUT_INVALID`, `details` là danh sách `{ field, problem }`; không trả stack trace và không tạo snapshot. Khi chưa có snapshot hợp lệ, `Task.risk` là `null`, còn `CurrentRisk` không có `snapshot`.
 
 Job HOURLY và MANUAL dùng cùng engine, lưu snapshot trong transaction riêng.
 
@@ -317,29 +322,27 @@ sequenceDiagram
         alt Thành công, output hợp lệ và evidence tồn tại
             EXT-->>PORT: Tóm tắt, evidence liên kết, 2–3 phương án
             PORT-->>API: Kết quả đã validate
-            API->>DB: Lưu recommendation SUCCESS gắn snapshot
-            API-->>UI: 200, kết quả mới, reused=false
+            API->>DB: Kiểm tra lại currentness, lưu SUCCESS theo snapshot gốc
+            API-->>UI: 200, reused=false, isCurrent theo kiểm tra cuối
         else Timeout, hết quota, lỗi provider hoặc output sai
             EXT-->>PORT: Lỗi hoặc output thiếu
             PORT-->>API: Lỗi đã chuẩn hóa
-            API->>DB: Lưu recommendation FAILED và mã lỗi
+            API->>DB: Kiểm tra lại currentness, lưu FAILED theo snapshot gốc và mã lỗi
             API-->>UI: 502 hoặc 503 kèm details.fallbackExplanation
         end
     end
     UI-->>M: Hiển thị giải thích, hoặc diễn giải mẫu và nút thử lại
 ```
 
-Chỉ Manager gọi AI trong MVP, và chỉ với snapshot hiện hành có mức Medium/High. Lỗi AI không ảnh hưởng risk, evidence hay luồng nghiệp vụ (NQ06); Manager xem lại kết quả đã lưu bằng GET cùng đường dẫn mà không phát sinh lần gọi AI mới. Payload tối thiểu gồm risk level/base level, rules/evidence, task status/progress/deadline, dependency trực tiếp, priority/deadline type, milestone còn hạn và workload tổng hợp. Backend bỏ tên, email, account ID, mật khẩu, API key và nội dung comment không cần thiết. AI không đổi status, assignment, progress hay risk; dữ liệu task/comment là dữ liệu, không phải lệnh.
+Chỉ Manager gọi AI trong MVP, và chỉ với snapshot hiện hành có mức Medium/High. Backend kiểm tra lại trạng thái snapshot hiện hành ngay trước khi lưu/trả recommendation. Nếu task đã đổi trong lúc provider xử lý, backend lưu kết quả theo snapshot gốc để truy vết, không gắn vào snapshot mới; response thành công trả `isCurrent=false`. Lỗi AI vẫn trả phong bì 502/503 có `snapshotId`; `fallbackExplanation` được dựng từ evidence đã lưu. Lỗi AI không ảnh hưởng risk, evidence hay luồng nghiệp vụ (NQ06). Manager xem lại recommendation đã lưu bằng GET cùng đường dẫn mà không phát sinh lần gọi AI mới. Payload tối thiểu gồm risk level/base level, rules/evidence, task status/progress/deadline, dependency trực tiếp, priority/deadline type, milestone còn hạn và workload tổng hợp. Backend bỏ tên, email, account ID, mật khẩu, API key và nội dung comment không cần thiết; không lưu prompt thô. AI không đổi status, assignment, progress hay risk; dữ liệu task/comment là dữ liệu, không phải lệnh.
 
 ## 8. Câu hỏi mở
 
-1. Ban góp ý thuật toán fingerprint đề xuất ở mục 4: danh sách trường dữ liệu gốc, thứ tự mảng và định danh nội bộ dùng cho workload.
-2. Ban chốt định dạng ruleVersion và chi tiết lỗi khi input risk thiếu hoặc sai miền.
-3. Khi Risk Engine lỗi: giữ thay đổi nghiệp vụ và đánh dấu risk chưa cập nhật (đề xuất ở mục 7A) hay rollback toàn bộ?
-4. Khi A hoặc R thay đổi trong lúc alert vẫn OPEN, danh sách người nhận có cập nhật ngay không, và readAt cũ của người vẫn nhận có được giữ không?
-5. Scope 6.3 cho Manager can thiệp có lý do ngoài quyền R nhưng không liệt kê từng thao tác. Bản nháp mới cho can thiệp progress và effort; cần xác nhận có cho Manager Start, báo blocker hoặc gửi kết quả thay R hay không.
-6. AI lỗi trả HTTP 502/503 kèm details.fallbackExplanation. Hiệp và Ban xác nhận cách này phù hợp với UI và test case TC-12, hay muốn trả 200 kèm trạng thái FAILED.
-7. Cổng backend sẽ chốt ở CWRM-12; OpenAPI dùng cổng ví dụ 3001.
+1. Khi triển khai fingerprint, chốt quy tắc null/thiếu, thứ tự cụ thể của từng mảng và fixture có digest cố định.
+2. Khi A hoặc R thay đổi trong lúc alert vẫn OPEN, danh sách người nhận có cập nhật ngay không, và readAt cũ của người vẫn nhận có được giữ không?
+3. Scope 6.3 cho Manager can thiệp có lý do ngoài quyền R nhưng không liệt kê từng thao tác. Bản nháp mới cho can thiệp progress và effort; cần xác nhận có cho Manager Start, báo blocker hoặc gửi kết quả thay R hay không.
+4. Provider/model AI sẽ được chốt sau lần gọi thật trong CWRM-16; ghi chi phí/quota nếu truy cập được.
+5. Cổng backend sẽ chốt ở CWRM-12; OpenAPI dùng cổng ví dụ 3001.
 
 ## 9. Đối chiếu acceptance criteria CWRM-11
 

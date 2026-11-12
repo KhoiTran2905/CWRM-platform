@@ -1,6 +1,6 @@
 # CWRM-11 — ERD sơ bộ và từ điển dữ liệu
 
-**Trạng thái:** bản thiết kế 0.1.0-draft, chờ review. Nguồn nghiệp vụ là Project Scope v0.1. Đây là kiểu PostgreSQL dự kiến; Prisma schema/migration sẽ cụ thể hóa trong CWRM-12.
+**Trạng thái:** bản thiết kế cập nhật cùng contract 0.2.0-draft ngày 12/11/2026. Nguồn nghiệp vụ là Project Scope v0.1. Đây là kiểu PostgreSQL dự kiến; Prisma schema/migration sẽ cụ thể hóa trong CWRM-12.
 
 ## 1. Quy ước
 
@@ -247,16 +247,21 @@ erDiagram
         UUID requested_by_user_id FK
         VARCHAR status
         VARCHAR provider
+        INTEGER latency_ms
+        JSONB usage
         JSONB recommendations
     }
     audit_logs {
         UUID id PK
         UUID actor_user_id FK
+        VARCHAR actor_kind
         VARCHAR object_type
         UUID object_id
         VARCHAR action
         JSONB before_value
         JSONB after_value
+        TEXT reason
+        TIMESTAMPTZ created_at
     }
     tasks ||--o{ risk_snapshots : evaluated
     risk_snapshots ||--o{ risk_evidence : explains
@@ -268,6 +273,8 @@ erDiagram
     accounts ||--o{ ai_recommendations : requests
     accounts o|--o{ audit_logs : authors
 ```
+
+Response `ManagerIntervention` không cần bảng riêng: bản ghi lấy từ `audit_logs` với `action=MANAGER_INTERVENTION`; `audit_logs.id` là `intervention.id`, `object_id` là `taskId`, `actor_user_id` là người thực hiện, `reason` và `created_at` được trả trực tiếp. `before_value.progress`/`after_value.progress` map tới `progressBefore`/`progressAfter`; `before_value.effortActualHours`/`after_value.effortActualHours` map tới các trường effort tương ứng. Không thêm cột cho dữ liệu hiển thị được suy ra khi trả API.
 
 ## 5. Từ điển dữ liệu
 
@@ -313,8 +320,8 @@ Mọi bảng có id UUID PK. Các bảng nghiệp vụ có created_at TIMESTAMPT
 | risk_evidence | risk_snapshot_id UUID NN FK; evidence_key VARCHAR(40) NN; source VARCHAR(16) NN; rule_id VARCHAR(3) ?; field VARCHAR(100) NN; value JSONB NN; unit VARCHAR(32) ?; created_at TIMESTAMPTZ NN | UQ snapshot_id,evidence_key; rule_id null hoặc R01–R12; JSONB chứa scalar evidence. API evidence.id ánh xạ tới evidence_key, ổn định trong snapshot. |
 | alerts | task_id UUID NN FK; current_snapshot_id UUID NN FK→risk_snapshots; risk_level VARCHAR(8) NN; status VARCHAR(12) NN; opened_at TIMESTAMPTZ NN; resolved_at TIMESTAMPTZ ?; created_at, updated_at | OPEN/RESOLVED; partial unique một OPEN/task. Cập nhật snapshot/evidence, không nhân bản. |
 | alert_recipients | alert_id UUID NN FK; user_id UUID NN FK; recipient_labels VARCHAR(1)[] NN; read_at TIMESTAMPTZ ?; created_at TIMESTAMPTZ NN | UQ alert_id,user_id; labels chứa A, R hoặc cả hai nếu một người đồng thời giữ hai nhãn; read khác resolve. |
-| ai_recommendations | risk_snapshot_id UUID NN FK; requested_by_user_id UUID NN FK; status VARCHAR(12) NN; provider VARCHAR(80) ?; model VARCHAR(120) ?; summary TEXT ?; linked_evidence_ids JSONB ?; recommendations JSONB ?; error_code VARCHAR(80) ?; error_message TEXT ?; input_fingerprint VARCHAR(80) NN; created_at TIMESTAMPTZ NN | SUCCESS/FAILED; success có 2–3 phương án. Provider không khóa cứng. |
-| audit_logs | actor_user_id UUID ? FK→accounts; actor_kind VARCHAR(8) NN; object_type VARCHAR(40) NN; object_id UUID NN; action VARCHAR(80) NN; before_value, after_value JSONB ?; reason TEXT ?; created_at TIMESTAMPTZ NN | Append-only; actor_kind USER/SYSTEM; object_id đa hình nên không FK tới một bảng cụ thể. |
+| ai_recommendations | risk_snapshot_id UUID NN FK; requested_by_user_id UUID NN FK; status VARCHAR(12) NN; provider VARCHAR(80) ?; model VARCHAR(120) ?; summary TEXT ?; linked_evidence_ids JSONB ?; recommendations JSONB ?; error_code VARCHAR(80) ?; error_message TEXT ?; input_fingerprint VARCHAR(80) NN; latency_ms INTEGER ?; usage JSONB ?; created_at TIMESTAMPTZ NN | SUCCESS/FAILED; success có 2–3 phương án. `latency_ms` và `usage` là telemetry tùy chọn/null; usage chứa inputTokens/outputTokens nếu provider trả về. Provider không khóa cứng; không lưu prompt thô. |
+| audit_logs | actor_user_id UUID ? FK→accounts; actor_kind VARCHAR(8) NN; object_type VARCHAR(40) NN; object_id UUID NN; action VARCHAR(80) NN; before_value, after_value JSONB ?; reason TEXT ?; created_at TIMESTAMPTZ NN | Append-only; actor_kind USER/SYSTEM; object_id đa hình nên không FK tới một bảng cụ thể. Can thiệp Manager dùng action `MANAGER_INTERVENTION`; API dựng intervention từ audit record, không tạo bảng trùng chức năng. |
 
 ## 6. Ràng buộc DB và service
 
@@ -384,8 +391,8 @@ Cột cuối là tag chứa các operation tương ứng trong [openapi.yaml](..
 
 ## 9. Câu hỏi mở
 
-1. Ban góp ý đề xuất fingerprint SHA-256 trên dữ liệu gốc ở Architecture mục 4.
-2. Ban chốt ruleVersion và lỗi khi input thiếu/sai miền; snapshot chỉ tạo khi input hợp lệ.
+1. Khi triển khai fingerprint, chốt quy tắc null/thiếu, thứ tự cụ thể của từng mảng và fixture có digest cố định như ghi ở Architecture mục 4.
+2. CWRM-15/backend chốt các giá trị cụ thể của `ruleVersion`; cấu hình được version hóa, input thiếu/sai miền trả `RISK_INPUT_INVALID` và không tạo snapshot theo phản hồi B-05.
 3. Khi A/R đổi trong alert OPEN, service cập nhật danh sách recipient; cần xác nhận cách giữ read_at của người vẫn nhận.
 4. CWRM-12 cần kiểm tra composite FK, CHECK và partial unique index với phiên bản Prisma được dùng; ràng buộc nào không khai báo được trong Prisma schema thì viết trong SQL migration.
 5. member_roles/member_skills hiện để service kiểm tra role, skill và thành viên cùng workspace. Có thể chuyển thành composite FK tới workspace_memberships(workspace_id,user_id) và roles/skills(workspace_id,id) nếu CWRM-12 thấy đáng.
