@@ -94,6 +94,7 @@ Phản hồi của Hiệp và Ban đã được ghi nhận từ comment Jira ng�
 - Hiệp và Ban đã phản hồi trên Jira lần lượt ngày 11/11/2026 và 12/11/2026; các điểm được nhận đã áp dụng ở `0.2.0-draft` ngày 12/11/2026. Việc còn mở: danh mục R04–R12, quy tắc chuẩn hóa fingerprint và fixture digest cố định.
 - ADR-001 ghi Tech Lead chấp thuận ngày 11/11/2026; nội dung ADR không được sửa trong lần cập nhật này.
 - Kiểm tra tự động bản 0.2.0-draft ngày 12/11/2026: `redocly lint` trên openapi.yaml không báo lỗi, còn 3 cảnh báo như bản trước (thiếu license, server là localhost, /health không có response 4xx); 7 sơ đồ Mermaid trong Architecture và ERD render được. Đây là kiểm tra cú pháp tài liệu, chưa phải kiểm thử backend.
+- Kiểm tra tự động bản 0.3.0-draft ngày 16/11/2026, sau khi đồng bộ FINAL-01..08: `redocly lint` trên openapi.yaml không báo lỗi, còn 3 cảnh báo như các bản trước (thiếu license, server là localhost, /health không có response 4xx); 7 sơ đồ Mermaid trong Architecture và ERD render được. Đây là kiểm tra cú pháp tài liệu, chưa phải kiểm thử backend. Bản 0.3.0-draft chưa có phản hồi review của Hiệp, Ban và Bảo.
 - Không ghi nhận cuộc họp, quyết định nhóm hoặc kết quả tích hợp chưa diễn ra.
 
 ## Thay đổi ở 0.2.0-draft
@@ -111,3 +112,91 @@ Phản hồi của Hiệp và Ban đã được ghi nhận từ comment Jira ng�
 | `AIRecommendation` có telemetry tùy chọn `latencyMs` và `usage`; không lưu prompt thô. | B-06 |
 | Nêu lưu FAILED cùng mã lỗi và dựng fallback từ evidence đã lưu khi trả response. | B-08 |
 | Ghi rõ dependency tự trỏ trả 422 `DEPENDENCY_CYCLE`, khác team trả 422 `CROSS_TEAM_DEPENDENCY`. | Review CWRM-17 (TC-20) |
+
+## Cập nhật theo Scope v0.2 Final — 0.3.0-draft (14/11/2026)
+
+Nguồn cập nhật là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026) và giao việc CWRM-18. Phạm vi gồm đồng bộ OpenAPI, ERD, Architecture với S01–S12, R01–R13 và AC của Scope. Contract 0.2.0-draft đã được Hiệp và Ban xác nhận bị thay đổi phá vỡ: bỏ `PUT /workspaces/{workspaceId}/members/{userId}/roles` và `PUT /workspaces/{workspaceId}/members/{userId}/skills`, thay bằng `PUT /workspaces/{workspaceId}/my-skills` và `PATCH /teams/{teamId}/members/{userId}`; đổi `Task.openWorkOpen` thành object `Task.openWork` và bộ lọc `openWorkOpen` thành `openWorkState`; đổi `/tasks/{taskId}/capacity` thành `/tasks/{taskId}/required-people`; thay `Eligibility.eligible/reasons` bằng `canApply/blockedReason`; bỏ `ProgressUpdateRequest.effortActualHours`; đổi `Assignment.endReason` thành `endedReason`; xóa API explanations và `/ai-recommendations/{recommendationId}` cùng schema `AIRecommendation`/`AIExplanationResult`; thay rule ID R01–R12 bằng R01–R13 và đổi `ruleVersion` mới sang `2.0.0`. Các mã `NOT_ELIGIBLE`, `CROSS_TEAM_DEPENDENCY`, `AI_SNAPSHOT_LEVEL_NOT_SUPPORTED` và `SNAPSHOT_NOT_CURRENT` (nếu không còn operation dùng) bị bỏ; bổ sung các mã lỗi cho Open Work, confirmation, effort, Work Update, replacement và AI chat. Hiệp cần sửa `src/lib/api/client.ts` theo các tên endpoint/trường/mã lỗi này trước khi dùng contract mới.
+
+### Truy vết DEC-CWRM9 và clarification actual effort
+
+| Quyết định | Thay đổi cụ thể trong OpenAPI / ERD |
+|---|---|
+| DEC-CWRM9-01 | Không tác động contract. |
+| DEC-CWRM9-02 | Direct Pending tiếp tục chiếm `occupiedSlots`; Open Work chính thức đóng không tự mở lại; `Task.openWork` có state/closedReason. |
+| DEC-CWRM9-03 | Chặn thêm/thay/duyệt rút R khi REVIEW; confirmation từng assignment và Return chọn assignment reset. |
+| DEC-CWRM9-04 | Task có `effortEstimateHours`/`effortActualHours`; Assignment có estimate/remaining; thêm effort endpoints, `member_capacities` và kiểm tổng allocation. |
+| DEC-CWRM9-05 | R09 theo deadline tích lũy `/168`; thêm `evaluationCoverage`, `notEvaluated`, evidence theo horizon và capacity. |
+| DEC-CWRM9-06 | Thêm R13, `currentInProgressSince`, `lastQualifyingActivityAt`, `lastQualifyingActivityType`, Work Update và ví dụ ruleVersion mới. |
+| DEC-CWRM9-07 | `/risk-rules` R01–R13; blocker interval không phụ thuộc Task status; R08 bỏ BLOCKED; R10 có `currentReviewSince`; early dependency là Alert riêng. |
+| DEC-CWRM9-08 | Xóa cơ chế recommendation/explanation; thêm AI thread/message, `AI_CHAT_ACCESS`, idempotency, retention và context checks. |
+| DEC-CWRM9-09 | Không tác động contract. |
+| DEC-CWRM9-10 | Không tác động contract. |
+| DEC-CWRM9-11 | Atomic replacement qua `/assignments/{assignmentId}/replacements`, `replacesAssignmentId`, `endedReason`; kiểm transaction và lỗi cạnh tranh. |
+| DEC-CWRM9-12 | Thêm `OPEN_WORK_TEMPORARILY_FULL`, `OPEN_WORK_CLOSED`, `openWorkState`, lý do đóng và quy tắc auto-reject. |
+| DEC-CWRM9-13 | AI chat private theo user/task; tối đa 50 tin, prompt tối đa 10, TTL 90 ngày, xóa thread riêng, quyền thu hồi ngay và context allowlist. |
+| DEC-CWRM9-14 | Assignment cũ giữ effort/checklist/confirmation làm lịch sử; R09 chỉ tính R active; thêm `taskRoleId`, `endedReason`. |
+| DEC-CWRM9-15 | Snapshot có COMPLETE/PARTIAL; `risk_evaluation_gaps` và `notEvaluated[]`; tách coverage với stale và evaluationError. |
+| DEC-CWRM9-16 | Thêm Work Update, server UTC activity type và timer R13; duplicate gần nhất trả `WORK_UPDATE_DUPLICATE`. |
+| Clarification actual effort (bổ sung DEC-04) | `effortActualHours` task-level chỉ Manager đổi qua management intervention có reason/audit; không nhận ở request progress của R. |
+
+### Trả lời bốn nhóm điểm của Ban (comment Jira 10071)
+
+| Điểm Ban nêu theo thứ tự rà soát | Contract 0.3.0-draft quy định | Fixture của Ban |
+|---|---|---|
+| (a) R13 và rule version: mốc bắt đầu đợt, loại hoạt động reset, boundary 72h | Rule R13 dùng `currentInProgressSince`, `lastQualifyingActivityAt`, `lastQualifyingActivityType`; activity types `PROGRESS_CHANGED`, `CHECKLIST_CHANGED`, `RESPONSIBLE_CONFIRMED`, `WORK_UPDATE`; `elapsedHours`, threshold 72; comment/no-op/effort không reset. Rule catalog R01–R13; `ruleVersion=2.0.0` cho bộ Scope v0.2; snapshot cũ giữ version cũ. | Khớp: 71:59:59 chưa kích hoạt; đúng 72h kích hoạt MEDIUM, không boost riêng; Review/Blocked rồi quay lại IN_PROGRESS mở đợt mới. Đây là đối chiếu theo công thức, chưa phải kết quả chạy test. |
+| (b) R09 và coverage: tích lũy theo từng deadline, missing-data, evidence ACL | Evidence có `subjectUserId`, `horizonAt`, `approvedWeeklyHours`, `remainingContinuousHoursToDeadline`, `availableHours`, `cumulativeRemainingHours`, `workloadRatioPercent` và ngưỡng 100/125. Gaps dùng `CAPACITY_NOT_DECLARED`, `CAPACITY_NOT_APPROVED`, `CAPACITY_ZERO`, `REMAINING_EFFORT_MISSING`; TaskRiskSummary có `evaluationCoverage`, `notEvaluatedCount`. | Tính lại: 21h/tuần × 24/168 = 3h; A: 4/3 ×100 = 133,33…%, nên HIGH ở mốc +24h. Đến +48h: available=6h, cumulative=4+2=6h, đúng 100%; mốc này không kích hoạt R09 và Task B không nhận R09 từ mốc sau; A vẫn giữ mức HIGH do mốc sớm. Fixture khớp. |
+| (c) AI chat: Low, riêng tư, context mới, xử lý khi quyền/context đổi | `GET/POST/DELETE /tasks/{taskId}/ai-thread`, không nhận threadId; mỗi thread theo workspace/task/caller; `AI_CHAT_ACCESS`; max 50 tin, prompt tối đa 10, expiresAt 90 ngày. Lỗi: `AI_TURN_IN_PROGRESS` 409, `AI_CONTEXT_UNAVAILABLE` 422, `AI_CONTEXT_CHANGED` 409, mất quyền 403; lỗi provider lưu ASSISTANT FAILED và trả fallback details. | Hai R trên cùng task có thread riêng kể cả LOW; Manager không đọc thread người khác; kiểm quyền/context sau Gemini. Các fixture phù hợp; thêm assertion cho status/error shape và không lưu câu trả lời hợp lệ khi context đổi. |
+| (d) QA regression AC02–09: Open Work, blocker, cross-Team dependency và ACL | Apply không gate Role/Skill; khi full tạm trả 409 `OPEN_WORK_TEMPORARILY_FULL`, khi đóng/chưa mở trả 422 `OPEN_WORK_CLOSED`; blocker không tự chuyển status; Manager dùng `/block` và `/unblock`; dependency khác Team cùng workspace được phép, khác workspace trả `CROSS_WORKSPACE_DEPENDENCY`, predecessor trả metadata tối thiểu. | Fixture khớp sau khi expected cập nhật từ contract cũ: bỏ NOT_ELIGIBLE/điều kiện cùng Team; thêm trạng thái tạm đầy/đóng chính thức và `decisionReasonCode`; resolve blocker cuối không tự unblock; member ngoài Team predecessor không gọi trực tiếp task/checklist/comment/work-update/AI thread. Chưa có kết quả regression. |
+
+### Điểm cần review trên 0.3.0-draft
+
+Mọi trạng thái dưới đây là **CHƯA CÓ PHẢN HỒI**; không ghi nhận phản hồi thay Hiệp, Ban hoặc Bảo.
+
+| Người review | Câu hỏi cụ thể | Trạng thái |
+|---|---|---|
+| Đặng Văn Hiệp | `Task.responsibleUsers[]` có đủ `assignmentId`, `taskRoleName`, `confirmedAt`, `effortEstimateHours`, `remainingEffortHours` để dựng màn Task/Review mà không gọi N+1 không? | CHƯA CÓ PHẢN HỒI |
+| Đặng Văn Hiệp | `Task.openWork.state` cùng `openWorkState` filter có đủ phân biệt NOT_OPENED/OPEN/TEMPORARILY_FULL/CLOSED cho UI không? | CHƯA CÓ PHẢN HỒI |
+| Đặng Văn Hiệp | Metadata `predecessors[]` gồm team/title/status/dependencyWarning có đủ hiển thị dependency khác Team không cần gọi API predecessor không? | CHƯA CÓ PHẢN HỒI |
+| Đặng Văn Hiệp | Alert per-task kèm `type`, `groupKey`, `resolvedAt` và lọc `resolved` có đủ để gộp trên UI mà vẫn giữ ACL không? | CHƯA CÓ PHẢN HỒI |
+| Lê Quốc Ban | Evidence R09 theo horizon và bộ `reasonCode` có đủ kiểm fixture missing capacity/effort và lọc dữ liệu liên Team không? | CHƯA CÓ PHẢN HỒI |
+| Lê Quốc Ban | Các trường timer/activity và `ruleVersion=2.0.0` có đủ kiểm boundary/no-op/đợt IN_PROGRESS cho R13 không? | CHƯA CÓ PHẢN HỒI |
+| Lê Quốc Ban | `AIMessage` cùng fallback `details.retryable/messageId/fallbackExplanation` có đủ biểu diễn SUCCESS/FAILED và ca thử lại không? | CHƯA CÓ PHẢN HỒI |
+| Đặng Văn Hiệp | `Task.availableActions` có thể hiển thị START và UPDATE_PROGRESS cho Manager ACTIVE khi đủ state guard không? | CHƯA CÓ PHẢN HỒI |
+| Đặng Văn Hiệp | UI có thể cho Decline DIRECT/REPLACEMENT không cần reason, đồng thời gửi reason không rỗng nếu người dùng tự nhập không? | CHƯA CÓ PHẢN HỒI |
+| Lê Quốc Ban | Bộ expected test có đủ kiểm tra quyền Start/progress của Manager và R cùng ngoại lệ resolve blocker chỉ sau khi assignment kết thúc không? | CHƯA CÓ PHẢN HỒI |
+| Lê Đình Bảo (PM) | Xác nhận phương án mặc định kỹ thuật: Manager ACTIVE chỉ resolve blocker OPEN khi assignment gắn vào đã kết thúc, bắt buộc reason và audit; Manager không resolve blocker của R còn hiệu lực? | CHƯA CÓ PHẢN HỒI |
+| Lê Quốc Ban | Danh mục `/risk-rules` có đủ tên, baseLevel, boostable và mô tả để dùng làm nguồn rule catalog/fixture không? | CHƯA CÓ PHẢN HỒI |
+
+### Thay đổi ở 0.3.0-draft
+
+| Thay đổi contract | Nguồn |
+|---|---|
+| `member_roles` và endpoint Manager sửa role/skill theo workspace được bỏ; thêm Main Role theo team và Member tự khai skill. | S02 |
+| Task có `openWork` state object, `openWorkState` filter, predecessor/successor metadata, responsible confirmation/effort summary, blocker interval và `evaluationCoverage`. | S04–S11, DEC-CWRM9-12/15 |
+| Thêm checklist per-assignment, withdrawal, atomic replacement, Task Role, effort allocation/remaining và weekly capacity. | S03, S04, S07 |
+| Open Work bỏ eligibility gate Role/Skill; phân biệt TEMPORARILY_FULL với CLOSED và xác định mã lý do reject. | S05, DEC-CWRM9-02/12 |
+| Review yêu cầu progress 100%, mọi R xác nhận, không blocker; Return chỉ reset xác nhận các R được chọn. | S06 |
+| Blocker không tự chuyển task sang BLOCKED; Manager có `/block` và `/unblock`; dependency cho phép cross-Team trong Workspace. | S08–S09 |
+| Risk mở R01–R13; thêm `/risk-rules`, `evaluationCoverage`, `notEvaluated`, `risk_evaluation_gaps`, R09 evidence và R13 timer fields. | S10, DEC-CWRM9-05/06/15/16 |
+| Alert có `type`, `groupKey`, `ruleId`, `resolvedAt`; dashboard bổ sung coverage, workload, milestone, withdrawal và capacity summary. | S11 |
+| Xóa explanation/recommendation một lượt; thay bằng private multi-turn AI chat, hai bảng thread/message và kiểm tra ACL/context. | S12, DEC-CWRM9-08/13 |
+| Đổi/mở mã lỗi theo danh sách Scope v0.2 Final; loại bỏ lỗi gate eligibility, cùng-Team dependency và snapshot explanation. | S04–S12 |
+| `startTask` và `createProgressUpdate` cho phép Manager ACTIVE và R Accepted hợp quyền; thay đổi progress thực của Manager là `PROGRESS_CHANGED` cho R13. | FINAL-03 |
+| Decline DIRECT/REPLACEMENT không cần reason; nếu có thì lưu cùng actor, server timestamp, status, audit và giải phóng slot. | FINAL-04 |
+| Resolve blocker theo assignment owner; mặc định chờ PM xác nhận cho Manager đóng blocker OPEN chỉ sau khi assignment kết thúc, với reason và audit. | FINAL-06 |
+| NQ05 làm rõ snapshot/evidence sau commit ≤5 giây, timer ≤60 phút theo server UTC và kiểm boundary bằng test clock/trigger MANUAL. | FINAL-02 |
+| Milestone phải cùng team với task; thêm `MILESTONE_TEAM_MISMATCH` 422 cho create/update. | FINAL-05 |
+
+## Đối chiếu Clarification FINAL-01..08 (15/11/2026)
+
+| Clarification | Thay đổi trong OpenAPI / ERD / Architecture |
+|---|---|
+| FINAL-01 | Cập nhật nguồn căn cứ trong OpenAPI `info.description`, Trạng thái/Nguồn của Architecture và ERD, cùng mục cập nhật này của Review Log. |
+| FINAL-02 | Mô tả `RiskSnapshot.triggerSource` và operation `evaluateTaskRisk`; Architecture mục 5 ghi NQ05 ≤5 giây sau commit, timer ≤60 phút/UTC, test clock và trigger MANUAL. |
+| FINAL-03 | `startTask`, `createProgressUpdate`, `Task.availableActions`, `ProgressUpdateRequest`; Architecture mục 6/7 và ERD mục 6 làm rõ quyền Manager, state guard, audit và R13. |
+| FINAL-04 | `respondToDirectAssignment`, `AssignmentResponseRequest`, `Assignment.responseReason`; ERD bảng `assignments` và mục 6 ghi reason Decline nullable/tùy chọn, slot được giải phóng và audit. |
+| FINAL-05 | `createTask`, `updateTask`, `TaskCreateRequest`, `TaskPatchRequest` và mã `MILESTONE_TEAM_MISMATCH`; ERD đã có composite FK milestone-task cùng team. |
+| FINAL-06 | `resolveBlocker`, `ResolveBlockerRequest`, `Blocker`, `TaskDependencySummary.dependencyWarning`, `Alert`; Architecture mục 5/6/7/10 và ERD bảng `blockers`/`alerts`, mục 6 làm rõ quyền owner, ngoại lệ Manager mặc định chờ PM xác nhận và early dependency trực tiếp độc lập R06/R07. |
+| FINAL-07 | Điều chỉnh các contract location `startTask`/`createProgressUpdate`, milestone same-Team và NQ05 theo AC; các guard invitation, Manager cuối, R03 và early dependency đã được rà soát. |
+| FINAL-08 | Không tác động contract. |
+| Charter v1.0 | Architecture mục 2 gắn Task history/audit với module `audit`, Comments S08 với `progress`, Khôi là owner API/DB; mỗi phần có issue/AC riêng khi phân rã, chưa tạo issue. |
