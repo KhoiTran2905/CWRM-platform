@@ -10,3 +10,7 @@ npm run dev
 Mở http://localhost:3000 (chuyển đến `/manager`). Dùng `npm run lint` và `npm run build` để kiểm tra. Scripts dùng Webpack vì môi trường Windows hiện tại chặn SWC native của Turbopack.
 
 `src/lib/demo-data.ts` là dữ liệu minh họa theo Scope v0.1. `src/lib/api/client.ts` là đầu mối đọc task/risk; khi chưa đặt `NEXT_PUBLIC_API_BASE_URL` ứng dụng dùng dữ liệu mẫu. Nếu bật biến này, phải dùng URL gồm tiền tố `/api/v1` và cần phiên/token thật cho endpoint bảo vệ; backend CWRM-12 hiện chưa có API nghiệp vụ. `RiskSnapshot` mẫu bám fixture CWRM-15 của Ban, còn `TaskSummary` là view model đã làm phẳng, **chưa phải Task schema đầy đủ** trong OpenAPI CWRM-11 `0.2.0-draft`. Mọi nút cần backend đều bị khóa hoặc ghi rõ chưa lưu dữ liệu. Không đưa token vào biến `NEXT_PUBLIC`.
+
+## Bàn giao tích hợp Sprint 2
+
+Nhánh CWRM-26 đưa frontend skeleton đã nghiệm thu vào PR hướng `main`. [Bảng kiểm và điểm còn chờ](../docs/integration/CWRM-26_Frontend_Integration_Handoff.md) ghi đúng commit nguồn, kết quả build và xung đột cần xử lý khi ghép backend. Contract mục tiêu là OpenAPI `0.3.0-draft` của CWRM-18; Auth/Workspace API và giao diện dùng API thật được triển khai, kiểm thử ở CWRM-24/CWRM-27. Giao diện và dữ liệu minh họa trong PR này chưa phải bằng chứng Web–API–DB.
