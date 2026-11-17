@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CWRM API
-  version: 0.3.2-draft
+  version: 0.3.3-draft
   description: |
     REST contract CWRM MVP theo Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026), thay cho Scope v0.1. Enum dùng UPPER_SNAKE_CASE; API dùng camelCase; DB dùng snake_case. Scope gồm S01–S12 và rule R01–R13. Rule Set v0.2 dùng ruleVersion 2.0.0; snapshot cũ giữ ruleVersion cũ.
     Manager và Member là hai quyền hệ thống. Main Role theo Team, Task Role theo Assignment, Skill do Member khai; các nhãn chuyên môn không cấp quyền. Task status, Assignment status, Request status, confirmation milestone và coverage là các trạng thái riêng. Mọi timestamp là UTC ISO-8601; ghi có expectedVersion; list dùng page/pageSize. Phong bì lỗi thống nhất { error: { code, message, details } }.
@@ -12,8 +12,8 @@ info:
     | PUBLIC | Không cần token. |
     | AUTHENTICATED | Có JWT hợp lệ. |
     | SELF | Chỉ tài nguyên thuộc caller trong JWT; không nhận userId để thao tác thay người khác. |
-    | WORKSPACE_MEMBER | Membership ACTIVE trong workspace; Member chỉ nhận dữ liệu team được phép. |
-    | WORKSPACE_MANAGER | Manager ACTIVE trong workspace chứa tài nguyên. |
+    | WORKSPACE_MEMBER | Membership ACTIVE trong workspace; Member chỉ nhận dữ liệu team được phép. Người gọi không có membership ACTIVE (kể cả INACTIVE) nhận 404 NOT_FOUND giống workspace không tồn tại, để không lộ ID. |
+    | WORKSPACE_MANAGER | Manager ACTIVE trong workspace chứa tài nguyên. Không có membership ACTIVE trả 404 NOT_FOUND; Member ACTIVE trả 403 FORBIDDEN. |
     | TEAM_ACCESS | Manager workspace chứa team hoặc thành viên ACTIVE của team. |
     | TASK_ACCESS | Manager workspace chứa task hoặc thành viên ACTIVE của team chứa task. Member ngoài team không gọi GET task. |
     | TASK_RESPONSIBLE | R có assignment ACCEPTED chưa kết thúc trên task. |
@@ -211,7 +211,7 @@ paths:
       operationId: getWorkspace
       tags: [Workspace]
       summary: Xem workspace
-      description: Quyền WORKSPACE_MEMBER; Manager trong workspace hoặc thành viên workspace.
+      description: Quyền WORKSPACE_MEMBER; Manager trong workspace hoặc thành viên workspace. Người không có membership ACTIVE nhận 404 NOT_FOUND, cùng body với workspace không tồn tại.
       x-permission: WORKSPACE_MEMBER
       responses:
         '200': {description: Workspace, content: {application/json: {schema: {$ref: '#/components/schemas/Workspace'}}}}
@@ -224,7 +224,7 @@ paths:
       operationId: updateWorkspace
       tags: [Workspace]
       summary: Sửa workspace
-      description: Quyền WORKSPACE_MANAGER; chỉ sửa trường quản trị được phép.
+      description: Quyền WORKSPACE_MANAGER; chỉ sửa trường quản trị được phép. Member ACTIVE nhận 403 FORBIDDEN; người không có membership ACTIVE nhận 404 NOT_FOUND.
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspacePatchRequest'}}}}
       responses:
@@ -2542,14 +2542,14 @@ components:
       required: [email, password, displayName]
       properties:
         email: {type: string, format: email, maxLength: 320}
-        password: {type: string, format: password}
+        password: {type: string, format: password, minLength: 8, description: 'Ít nhất 8 ký tự và tối đa 72 byte UTF-8 (giới hạn đầu vào của bcrypt); vi phạm trả 400 VALIDATION_ERROR. Không trim.'}
         displayName: {type: string, minLength: 1, maxLength: 120}
     LoginRequest:
       type: object
       required: [email, password]
       properties:
         email: {type: string, format: email}
-        password: {type: string, format: password}
+        password: {type: string, format: password, minLength: 1, description: 'Không áp độ dài tối thiểu khi đăng nhập. Mật khẩu dài hơn 72 byte UTF-8 không thể khớp tài khoản nào và trả 401 như sai mật khẩu.'}
     AuthSession:
       type: object
       required: [accessToken, tokenType, expiresIn, account]

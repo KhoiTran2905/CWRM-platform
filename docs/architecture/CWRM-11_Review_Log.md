@@ -291,3 +291,14 @@ Hai người review đã xác nhận trên OpenAPI `0.3.2-draft`, commit `d58394
 - Mọi câu hỏi review trên 0.3.0-draft đã đóng; PM-03 đã quyết.
 - Đây là xác nhận tài liệu và expected behavior. Chưa có mã backend theo contract này; toàn bộ ca backend/E2E vẫn NOT RUN.
 - Còn lại: Lê Đình Bảo (PM) nghiệm thu CWRM-18.
+
+## Thay đổi ở 0.3.3-draft (17/11/2026)
+
+Khi bắt đầu CWRM-24 (Auth Core & Workspace Bootstrap API), hai chỗ contract còn để ngỏ được Khôi (Tech Lead) chốt. Không đổi bảng, cột hay shape response. Ràng buộc mật khẩu là thay đổi hẹp đầu vào: client đang gửi mật khẩu dưới 8 ký tự hoặc trên 72 byte sẽ nhận 400.
+
+| Thay đổi contract | Lý do |
+|---|---|
+| `info.version` lên `0.3.3-draft`; Trạng thái Architecture/ERD cập nhật. | — |
+| `RegisterRequest.password`: ít nhất 8 ký tự, tối đa 72 byte UTF-8, không trim; vi phạm trả 400 `VALIDATION_ERROR`. | 0.3.2-draft không có giới hạn. bcrypt (ADR-001) chỉ dùng 72 byte đầu, nên không giới hạn thì hai mật khẩu chung 72 byte đầu đều đăng nhập được. |
+| `LoginRequest.password`: không áp tối thiểu; mật khẩu trên 72 byte trả 401 như sai mật khẩu. | Không cho phần vượt 72 byte bị bcrypt cắt ngầm khi so khớp. |
+| `WORKSPACE_MEMBER`/`WORKSPACE_MANAGER`, `getWorkspace`, `updateWorkspace`: người không có membership ACTIVE (kể cả INACTIVE) nhận 404 `NOT_FOUND`, cùng body với workspace không tồn tại; Member ACTIVE gọi thao tác chỉ Manager được làm nhận 403 `FORBIDDEN`. | Trả lời câu hỏi 403/404 của Ban ở CWRM-31; thống nhất với cách contract xử lý task khác Team (404, không lộ ID). |

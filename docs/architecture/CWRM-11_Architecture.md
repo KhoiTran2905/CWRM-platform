@@ -1,6 +1,6 @@
 # CWRM-11 — Kiến trúc hệ thống
 
-**Trạng thái:** bản thiết kế 0.3.2-draft cập nhật ngày 17/11/2026 theo quyết định PM-03; 0.3.1-draft cập nhật cùng ngày theo review CWRM-18; nền thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). ADR kỹ thuật được Tech Lead chấp thuận ngày 11/11/2026; lần cập nhật này không sửa ADR-001.
+**Trạng thái:** bản thiết kế 0.3.3-draft cập nhật ngày 17/11/2026 khi bắt đầu CWRM-24 (độ dài mật khẩu, 404 cho người ngoài workspace); 0.3.2-draft cập nhật cùng ngày theo quyết định PM-03; 0.3.1-draft cập nhật cùng ngày theo review CWRM-18; nền thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). ADR kỹ thuật được Tech Lead chấp thuận ngày 11/11/2026; lần cập nhật này không sửa ADR-001.
 
 ## 1. Ranh giới và cấu trúc triển khai
 
@@ -216,8 +216,8 @@ Quyền hệ thống chỉ có MANAGER và MEMBER trên từng workspace. Role/s
 | PUBLIC | Không cần token. |
 | AUTHENTICATED | Có JWT hợp lệ. |
 | SELF | Chỉ tài nguyên của tài khoản trong JWT. |
-| WORKSPACE_MEMBER | Membership ACTIVE trong workspace; Member chỉ thấy dữ liệu team được phép. |
-| WORKSPACE_MANAGER | Manager ACTIVE trong workspace liên quan. |
+| WORKSPACE_MEMBER | Membership ACTIVE trong workspace; Member chỉ thấy dữ liệu team được phép. Không có membership ACTIVE trả 404 `NOT_FOUND` như workspace không tồn tại. |
+| WORKSPACE_MANAGER | Manager ACTIVE trong workspace liên quan. Không có membership ACTIVE trả 404; Member ACTIVE trả 403. |
 | TEAM_ACCESS | Manager workspace chứa team hoặc thành viên ACTIVE của team. |
 | TASK_ACCESS | Manager workspace chứa task hoặc thành viên ACTIVE của team chứa task. Member ngoài team không GET task. |
 | TASK_RESPONSIBLE | R có Assignment ACCEPTED chưa kết thúc trên task. |
@@ -369,7 +369,7 @@ Ngoại lệ đóng blocker OPEN sau khi assignment kết thúc đã được PM
 
 ## 10. Đối chiếu acceptance criteria Scope v0.2
 
-Đây là đối chiếu thiết kế giữa AC và contract 0.3.2-draft; chưa phải bằng chứng chạy thực, kiểm thử, nghiệm thu hay đo hiệu năng.
+Đây là đối chiếu thiết kế giữa AC và contract 0.3.3-draft; chưa phải bằng chứng chạy thực, kiểm thử, nghiệm thu hay đo hiệu năng.
 
 | AC | Endpoint/bảng/quy tắc chính trong contract |
 |---|---|

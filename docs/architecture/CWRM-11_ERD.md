@@ -1,6 +1,6 @@
 # CWRM-11 — ERD sơ bộ và từ điển dữ liệu
 
-**Trạng thái:** bản thiết kế 0.3.2-draft cập nhật ngày 17/11/2026 theo quyết định PM-03; 0.3.1-draft cập nhật cùng ngày theo review CWRM-18; nền thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). Đây là kiểu PostgreSQL dự kiến; Prisma schema/migration sẽ cụ thể hóa trong CWRM-12.
+**Trạng thái:** bản thiết kế 0.3.3-draft cập nhật ngày 17/11/2026, không đổi bảng hay cột so với 0.3.2-draft; 0.3.2-draft cập nhật cùng ngày theo quyết định PM-03; 0.3.1-draft cập nhật cùng ngày theo review CWRM-18; nền thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). Đây là kiểu PostgreSQL dự kiến; Prisma schema/migration sẽ cụ thể hóa trong CWRM-12.
 
 ## 1. Quy ước
 
@@ -357,7 +357,7 @@ Tổng số bảng: **9 + 16 + 8 = 33**. `AIMessage.status`, `errorCode`, `evide
 
 ### Quy ước mã lỗi liên quan
 
-Các mã dùng trong contract 0.3.2-draft gồm: `VALIDATION_ERROR`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `VERSION_CONFLICT`, `CAPACITY_EXCEEDED`, `UNIQUE_CONFLICT`, `INVALID_STATE_TRANSITION`, `OPEN_WORK_TEMPORARILY_FULL`, `OPEN_WORK_CLOSED`, `PREDECESSOR_NOT_DONE`, `OPEN_BLOCKERS_EXIST`, `NO_ACCEPTED_RESPONSIBLE`, `DEPENDENCY_CYCLE`, `CROSS_WORKSPACE_DEPENDENCY`, `MILESTONE_TEAM_MISMATCH`, `ACCOUNTABLE_NOT_MANAGER`, `LAST_MANAGER_REQUIRED`, `RESPONSIBILITY_REQUIRED`, `INVITEE_NOT_REGISTERED`, `ASSIGNMENT_CHANGE_NOT_ALLOWED_IN_REVIEW`, `PROGRESS_NOT_COMPLETE`, `RESPONSIBLE_CONFIRMATION_MISSING`, `EFFORT_ALLOCATION_EXCEEDED`, `WORK_UPDATE_DUPLICATE`, `RISK_INPUT_INVALID`, `RISK_EVALUATION_FAILED`, `AI_CONTEXT_UNAVAILABLE`, `AI_CONTEXT_CHANGED`, `AI_TURN_IN_PROGRESS`, `AI_PROVIDER_ERROR`, `AI_OUTPUT_INVALID`, `AI_TIMEOUT`, `AI_QUOTA_EXCEEDED`, `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`. Danh sách đầy đủ và status nằm tại `openapi.yaml`.
+Các mã dùng trong contract 0.3.3-draft gồm: `VALIDATION_ERROR`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `VERSION_CONFLICT`, `CAPACITY_EXCEEDED`, `UNIQUE_CONFLICT`, `INVALID_STATE_TRANSITION`, `OPEN_WORK_TEMPORARILY_FULL`, `OPEN_WORK_CLOSED`, `PREDECESSOR_NOT_DONE`, `OPEN_BLOCKERS_EXIST`, `NO_ACCEPTED_RESPONSIBLE`, `DEPENDENCY_CYCLE`, `CROSS_WORKSPACE_DEPENDENCY`, `MILESTONE_TEAM_MISMATCH`, `ACCOUNTABLE_NOT_MANAGER`, `LAST_MANAGER_REQUIRED`, `RESPONSIBILITY_REQUIRED`, `INVITEE_NOT_REGISTERED`, `ASSIGNMENT_CHANGE_NOT_ALLOWED_IN_REVIEW`, `PROGRESS_NOT_COMPLETE`, `RESPONSIBLE_CONFIRMATION_MISSING`, `EFFORT_ALLOCATION_EXCEEDED`, `WORK_UPDATE_DUPLICATE`, `RISK_INPUT_INVALID`, `RISK_EVALUATION_FAILED`, `AI_CONTEXT_UNAVAILABLE`, `AI_CONTEXT_CHANGED`, `AI_TURN_IN_PROGRESS`, `AI_PROVIDER_ERROR`, `AI_OUTPUT_INVALID`, `AI_TIMEOUT`, `AI_QUOTA_EXCEEDED`, `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`. Danh sách đầy đủ và status nằm tại `openapi.yaml`.
 
 ## 7. Chỉ mục tra cứu dự kiến
 
