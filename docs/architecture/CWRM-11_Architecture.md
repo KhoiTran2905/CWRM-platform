@@ -1,6 +1,6 @@
 # CWRM-11 — Kiến trúc hệ thống
 
-**Trạng thái:** bản thiết kế 0.3.1-draft cập nhật ngày 17/11/2026 theo review CWRM-18; nền thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). ADR kỹ thuật được Tech Lead chấp thuận ngày 11/11/2026; lần cập nhật này không sửa ADR-001.
+**Trạng thái:** bản thiết kế 0.3.2-draft cập nhật ngày 17/11/2026 theo quyết định PM-03; 0.3.1-draft cập nhật cùng ngày theo review CWRM-18; nền thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). ADR kỹ thuật được Tech Lead chấp thuận ngày 11/11/2026; lần cập nhật này không sửa ADR-001.
 
 ## 1. Ranh giới và cấu trúc triển khai
 
@@ -225,7 +225,7 @@ Quyền hệ thống chỉ có MANAGER và MEMBER trên từng workspace. Role/s
 | ASSIGNMENT_OWNER | Người gọi là chủ assignment ACCEPTED chưa kết thúc. |
 | AI_CHAT_ACCESS | Manager workspace chứa task hoặc R có Assignment ACCEPTED chưa kết thúc; thread luôn của chính caller. Manager không đọc thread user khác. |
 
-`startTask` và `createProgressUpdate` cho phép Manager ACTIVE trong workspace chứa task hoặc R Accepted còn hiệu lực; Start vẫn cần A hợp lệ, ít nhất một R Accepted và mọi predecessor trực tiếp DONE, còn progress chỉ ở IN_PROGRESS/BLOCKED. Cả hai ghi expectedVersion, actor, timestamp server và audit. Progress đổi thực sự do Manager cũng là `PROGRESS_CHANGED` cho R13; no-op không reset. `resolveBlocker` dành cho chủ assignment còn hiệu lực; mặc định kỹ thuật chờ PM xác nhận chỉ cho Manager ACTIVE đóng blocker OPEN khi assignment gắn vào đã kết thúc, với reason bắt buộc và audit. Ngoại lệ này tránh blocker còn OPEN khiến task không đủ điều kiện gửi Review. Manager không resolve blocker của R còn hiệu lực.
+`startTask` và `createProgressUpdate` cho phép Manager ACTIVE trong workspace chứa task hoặc R Accepted còn hiệu lực; Start vẫn cần A hợp lệ, ít nhất một R Accepted và mọi predecessor trực tiếp DONE, còn progress chỉ ở IN_PROGRESS/BLOCKED. Cả hai ghi expectedVersion, actor, timestamp server và audit. Progress đổi thực sự do Manager cũng là `PROGRESS_CHANGED` cho R13; no-op không reset. `resolveBlocker` dành cho chủ assignment còn hiệu lực (FINAL-06). Ngoại lệ có điều kiện, PM-03 duyệt 17/11/2026: khi assignment gắn với blocker đã kết thúc và blocker còn OPEN, chỉ người đồng thời là Manager ACTIVE và A hiện hành của task được resolve, với reason bắt buộc và audit (actor, thời điểm server UTC, blocker/assignment/task, thay đổi trạng thái); Manager ACTIVE khác nhận 403. A không còn hợp lệ thì phải chuyển A có audit trước, không mở quyền cho mọi Manager. Ngoại lệ này tránh blocker còn OPEN khiến task không đủ điều kiện gửi Review. Không ai ngoài chủ assignment resolve blocker của R còn hiệu lực.
 
 Chỉ TASK_ACCESS thấy task detail/checklist/comment/work-update. Với dependency khác Team, predecessor metadata chứa đúng `taskId`, `title`, `teamId`, `teamName`, `status`, `dependencyWarning`; người không thuộc team predecessor gọi trực tiếp task, checklist, comment, Work Update hay AI thread của predecessor nhận 404 `NOT_FOUND`. Manager thấy chuỗi descendants; member ngoài team chỉ metadata trực tiếp.
 
@@ -293,7 +293,7 @@ sequenceDiagram
     end
 ```
 
-Checklist, confirmation và Work Update chỉ cập nhật đồng hồ khi đổi giá trị/thành công. Progress gửi trùng là no-op. R là chủ assignment còn hiệu lực resolve blocker của mình; mặc định kỹ thuật chờ PM xác nhận, Manager chỉ resolve blocker OPEN gắn với assignment đã kết thúc. Resolve blocker cuối không tự đổi Task status; Manager dùng `/unblock` để điều khiển trạng thái.
+Checklist, confirmation và Work Update chỉ cập nhật đồng hồ khi đổi giá trị/thành công. Progress gửi trùng là no-op. R là chủ assignment còn hiệu lực resolve blocker của mình; theo PM-03, chỉ A hiện hành (Manager ACTIVE) resolve blocker OPEN gắn với assignment đã kết thúc. Resolve blocker cuối không tự đổi Task status; Manager dùng `/unblock` để điều khiển trạng thái.
 
 ### B. Một lượt AI Chat, quyền và context được kiểm tra sau provider trước mọi kết quả
 
@@ -358,7 +358,7 @@ Thread suy ra từ JWT + taskId; client không gửi threadId và không có API
 
 ## 8. Câu hỏi mở
 
-Ngoại lệ Manager đóng blocker OPEN sau khi assignment kết thúc đang được ghi theo phương án kỹ thuật mặc định và chờ PM xác nhận tại Review Log; nếu không đóng, blocker còn OPEN sẽ khiến task không đủ điều kiện gửi Review. Chuẩn hóa byte JSON trong fingerprint là chi tiết triển khai, không đổi shape OpenAPI hay quy tắc nghiệp vụ.
+Ngoại lệ đóng blocker OPEN sau khi assignment kết thúc đã được PM chốt ở PM-03 ngày 17/11/2026 (chỉ A hiện hành là Manager ACTIVE), không còn là câu hỏi mở. Chuẩn hóa byte JSON trong fingerprint là chi tiết triển khai, không đổi shape OpenAPI hay quy tắc nghiệp vụ.
 
 ## 9. Đối chiếu acceptance criteria CWRM-11
 
@@ -369,7 +369,7 @@ Ngoại lệ Manager đóng blocker OPEN sau khi assignment kết thúc đang đ
 
 ## 10. Đối chiếu acceptance criteria Scope v0.2
 
-Đây là đối chiếu thiết kế giữa AC và contract 0.3.1-draft; chưa phải bằng chứng chạy thực, kiểm thử, nghiệm thu hay đo hiệu năng.
+Đây là đối chiếu thiết kế giữa AC và contract 0.3.2-draft; chưa phải bằng chứng chạy thực, kiểm thử, nghiệm thu hay đo hiệu năng.
 
 | AC | Endpoint/bảng/quy tắc chính trong contract |
 |---|---|

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CWRM API
-  version: 0.3.1-draft
+  version: 0.3.2-draft
   description: |
     REST contract CWRM MVP theo Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026), thay cho Scope v0.1. Enum dùng UPPER_SNAKE_CASE; API dùng camelCase; DB dùng snake_case. Scope gồm S01–S12 và rule R01–R13. Rule Set v0.2 dùng ruleVersion 2.0.0; snapshot cũ giữ ruleVersion cũ.
     Manager và Member là hai quyền hệ thống. Main Role theo Team, Task Role theo Assignment, Skill do Member khai; các nhãn chuyên môn không cấp quyền. Task status, Assignment status, Request status, confirmation milestone và coverage là các trạng thái riêng. Mọi timestamp là UTC ISO-8601; ghi có expectedVersion; list dùng page/pageSize. Phong bì lỗi thống nhất { error: { code, message, details } }.
@@ -1400,8 +1400,13 @@ paths:
       operationId: resolveBlocker
       tags: [Progress]
       summary: Giải quyết blocker
-      description: 'Quyền ASSIGNMENT_OWNER hoặc WORKSPACE_MANAGER theo điều kiện sau: R là chủ assignment gắn với blocker và assignment ACCEPTED còn hiệu lực thì chỉ resolve blocker của chính mình. Mặc định kỹ thuật chờ PM xác nhận: Manager ACTIVE trong workspace chỉ được resolve khi assignment gắn blocker đã kết thúc (rút được duyệt, bị thay hoặc Manager kết thúc) và blocker vẫn OPEN; Manager phải gửi resolutionNote nêu lý do, được ghi audit để đóng blocker còn sót, nếu không blocker OPEN sẽ khiến task không đủ điều kiện gửi Review. Manager resolve blocker gắn với R còn hiệu lực trả 403 FORBIDDEN. resolutionNote tùy chọn với R (nếu có thì không rỗng) và bắt buộc với Manager. Ghi nhận resolvedAt/resolvedByUserId. Resolve blocker cuối không tự chuyển Task về IN_PROGRESS; Manager gọi /unblock sau đó.'
-      x-permission: [ASSIGNMENT_OWNER, WORKSPACE_MANAGER]
+      description: |
+        Quyền ASSIGNMENT_OWNER hoặc TASK_ACCOUNTABLE theo điều kiện sau.
+        Khi assignment gắn với blocker còn ACCEPTED và còn hiệu lực (FINAL-06): chỉ R là chủ assignment đó được resolve blocker của chính mình; Manager, kể cả A, gọi thì trả 403 FORBIDDEN.
+        Ngoại lệ có điều kiện của FINAL-06, PM-03 duyệt ngày 17/11/2026 (phương án B): khi assignment gắn với blocker đã kết thúc (rút được duyệt, bị thay hoặc Manager kết thúc) và blocker vẫn OPEN, chỉ người gọi đồng thời là Manager ACTIVE của workspace và là A hiện hành của task chứa blocker được resolve. Manager ACTIVE khác không phải A trả 403 FORBIDDEN. Nếu A hiện hành không còn hợp lệ hoặc không thể thực hiện, phải chuyển A qua POST /tasks/{taskId}/accountable (có audit) trước; quyền resolve không mở cho mọi Manager. Sau khi chuyển A, A mới được resolve và A cũ trả 403.
+        Với ngoại lệ, resolutionNote là lý do bắt buộc, không rỗng; thiếu trả 400 VALIDATION_ERROR. Audit ghi actor, thời điểm server UTC, blocker, assignment, task và thay đổi trạng thái. Việc R rời task không được coi là bằng chứng blocker đã được xử lý; nếu nguyên nhân vẫn ảnh hưởng R mới, R mới báo blocker mới theo quyền của mình. Lịch sử blocker và assignment được giữ.
+        resolutionNote tùy chọn với R (nếu có thì không rỗng). Ghi nhận resolvedAt/resolvedByUserId. Resolve blocker, kể cả blocker cuối, không tự chuyển Task về IN_PROGRESS và không đổi progress, R hay trạng thái Review/Done; Manager gọi /unblock riêng khi đủ điều kiện.
+      x-permission: [ASSIGNMENT_OWNER, TASK_ACCOUNTABLE]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResolveBlockerRequest'}}}}
       responses:
         '200': {description: Blocker đã giải quyết, content: {application/json: {schema: {$ref: '#/components/schemas/BlockerResult'}}}}
@@ -2800,7 +2805,7 @@ components:
         availableActions:
           type: array
           description: |
-            Trường này chỉ có trên Task, tính cho người gọi và gồm action ở mức task, assignment, checklist và blocker. UI ẩn hoặc vô hiệu nút nếu action không có trong danh sách. Server vẫn kiểm khi thực thi và trả 409 VERSION_CONFLICT, 403 FORBIDDEN hoặc 422 với mã guard tương ứng. Các action được tính theo trạng thái hiện tại, không thay cho kiểm tra phía server. START và UPDATE_PROGRESS có thể xuất hiện cho Manager ACTIVE hoặc R Accepted còn hiệu lực khi đủ điều kiện tương ứng; START cần task TO_DO, A hợp lệ, ít nhất một R Accepted và mọi predecessor trực tiếp DONE; UPDATE_PROGRESS chỉ ở IN_PROGRESS/BLOCKED. SUBMIT_REVIEW chỉ có khi progress bằng 100, mọi R Accepted hiệu lực đã có confirmedAt và không còn blocker OPEN. UNBLOCK chỉ có khi task BLOCKED và không còn blocker OPEN. RESOLVE_BLOCKER dành cho chủ assignment gắn blocker còn hiệu lực; Manager chỉ có action này nếu assignment đã kết thúc và blocker còn OPEN. Các action về assignment, xác nhận và checklist cũng phản ánh điều kiện trạng thái tương ứng.
+            Trường này chỉ có trên Task, tính cho người gọi và gồm action ở mức task, assignment, checklist và blocker. UI ẩn hoặc vô hiệu nút nếu action không có trong danh sách. Server vẫn kiểm khi thực thi và trả 409 VERSION_CONFLICT, 403 FORBIDDEN hoặc 422 với mã guard tương ứng. Các action được tính theo trạng thái hiện tại, không thay cho kiểm tra phía server. START và UPDATE_PROGRESS có thể xuất hiện cho Manager ACTIVE hoặc R Accepted còn hiệu lực khi đủ điều kiện tương ứng; START cần task TO_DO, A hợp lệ, ít nhất một R Accepted và mọi predecessor trực tiếp DONE; UPDATE_PROGRESS chỉ ở IN_PROGRESS/BLOCKED. SUBMIT_REVIEW chỉ có khi progress bằng 100, mọi R Accepted hiệu lực đã có confirmedAt và không còn blocker OPEN. UNBLOCK chỉ có khi task BLOCKED và không còn blocker OPEN. RESOLVE_BLOCKER dành cho chủ assignment gắn blocker còn hiệu lực; Manager chỉ có action này nếu là A hiện hành của task, assignment đã kết thúc và blocker còn OPEN (PM-03). Các action về assignment, xác nhận và checklist cũng phản ánh điều kiện trạng thái tương ứng.
           items:
             type: string
             enum: [EDIT_TASK, UPDATE_REQUIRED_PEOPLE, TRANSFER_ACCOUNTABILITY, START, UPDATE_PROGRESS, SUBMIT_REVIEW, APPROVE, RETURN, BLOCK, UNBLOCK, CREATE_MANAGEMENT_INTERVENTION, CREATE_DIRECT_ASSIGNMENT, RESPOND_TO_ASSIGNMENT, END_ASSIGNMENT, OPEN_OPEN_WORK, CLOSE_OPEN_WORK, REQUEST_OPEN_WORK, WITHDRAW_OPEN_WORK_REQUEST, APPROVE_OPEN_WORK_REQUEST, REJECT_OPEN_WORK_REQUEST, REQUEST_WITHDRAWAL, CANCEL_WITHDRAWAL, APPROVE_WITHDRAWAL, REJECT_WITHDRAWAL, CREATE_REPLACEMENT, CONFIRM_ASSIGNMENT, UNCONFIRM_ASSIGNMENT, EDIT_CHECKLIST, UPDATE_TASK_ROLE, ALLOCATE_EFFORT, UPDATE_REMAINING_EFFORT, UPDATE_RACI_CONTACTS, CREATE_BLOCKER, RESOLVE_BLOCKER, CREATE_WORK_UPDATE, CREATE_COMMENT, ADD_DEPENDENCY, REMOVE_DEPENDENCY, EVALUATE_RISK, OPEN_AI_CHAT]
@@ -3195,9 +3200,9 @@ components:
         impact: {type: string, minLength: 1}
     ResolveBlockerRequest:
       type: object
-      description: resolutionNote tùy chọn với ASSIGNMENT_OWNER và bắt buộc với WORKSPACE_MANAGER; schema để trường tùy chọn vì điều kiện bắt buộc phụ thuộc người gọi, server trả 400 VALIDATION_ERROR khi Manager không gửi.
+      description: resolutionNote tùy chọn với ASSIGNMENT_OWNER và bắt buộc với TASK_ACCOUNTABLE khi resolve theo ngoại lệ PM-03; schema để trường tùy chọn vì điều kiện bắt buộc phụ thuộc người gọi, server trả 400 VALIDATION_ERROR khi A không gửi.
       properties:
-        resolutionNote: {type: string, minLength: 1, maxLength: 1000, description: 'Tùy chọn với ASSIGNMENT_OWNER; bắt buộc với WORKSPACE_MANAGER.'}
+        resolutionNote: {type: string, minLength: 1, maxLength: 1000, description: 'Tùy chọn với ASSIGNMENT_OWNER; bắt buộc với TASK_ACCOUNTABLE theo ngoại lệ PM-03.'}
     BlockerResult:
       type: object
       required: [blocker, task]

@@ -163,8 +163,8 @@ Trạng thái dưới đây ghi nhận phản hồi Jira ngày 17/11/2026. Các 
 | Lê Quốc Ban | `AIMessage` cùng fallback `details.retryable/messageId/fallbackExplanation` có đủ biểu diễn SUCCESS/FAILED và ca thử lại không? | CẦN ĐIỀU CHỈNH (17/11) — Recheck trước fallback, shape FAILED và replay/retry; đã sửa ở 0.3.1-draft. |
 | Đặng Văn Hiệp | `Task.availableActions` có thể hiển thị START và UPDATE_PROGRESS cho Manager ACTIVE khi đủ state guard không? | ĐỒNG Ý DÙNG LÀM NGUỒN QUYẾT ĐỊNH (17/11) — Hiệp đề nghị làm rõ phạm vi áp dụng và mã lỗi; đã bổ sung mô tả. |
 | Đặng Văn Hiệp | UI có thể cho Decline DIRECT/REPLACEMENT không cần reason, đồng thời gửi reason không rỗng nếu người dùng tự nhập không? | ĐỒNG Ý (17/11) — Yêu cầu schema thể hiện optional và không gửi chuỗi rỗng; schema đã đúng, bổ sung mô tả. |
-| Lê Quốc Ban | Bộ expected test có đủ kiểm tra quyền Start/progress của Manager và R cùng ngoại lệ resolve blocker chỉ sau khi assignment kết thúc không? | ĐỒNG Ý (17/11) cho Start/progress; nhánh Manager đóng blocker của assignment đã kết thúc chờ Bảo. |
-| Lê Đình Bảo (PM) | Xác nhận phương án mặc định kỹ thuật: Manager ACTIVE chỉ resolve blocker OPEN khi assignment gắn vào đã kết thúc, bắt buộc reason và audit; Manager không resolve blocker của R còn hiệu lực? | CHƯA CÓ PHẢN HỒI |
+| Lê Quốc Ban | Bộ expected test có đủ kiểm tra quyền Start/progress của Manager và R cùng ngoại lệ resolve blocker chỉ sau khi assignment kết thúc không? | ĐỒNG Ý (17/11) cho Start/progress; nhánh đóng blocker của assignment đã kết thúc đã có quyết định PM-03 (phương án B), chờ Ban đối chiếu ca QA ở mục "Quyết định PM-03". |
+| Lê Đình Bảo (PM) | Xác nhận phương án mặc định kỹ thuật: Manager ACTIVE chỉ resolve blocker OPEN khi assignment gắn vào đã kết thúc, bắt buộc reason và audit; Manager không resolve blocker của R còn hiệu lực? | ĐÃ QUYẾT (17/11) — PM-03 phương án B, Jira CWRM-18 comment 10100: chỉ Manager ACTIVE là A hiện hành của task; Manager khác trả 403. Đã áp dụng ở 0.3.2-draft. |
 | Lê Quốc Ban | Danh mục `/risk-rules` có đủ tên, baseLevel, boostable và mô tả để dùng làm nguồn rule catalog/fixture không? | ĐỒNG Ý (17/11) |
 
 ### Thay đổi ở 0.3.0-draft
@@ -183,7 +183,7 @@ Trạng thái dưới đây ghi nhận phản hồi Jira ngày 17/11/2026. Các 
 | Đổi/mở mã lỗi theo danh sách Scope v0.2 Final; loại bỏ lỗi gate eligibility, cùng-Team dependency và snapshot explanation. | S04–S12 |
 | `startTask` và `createProgressUpdate` cho phép Manager ACTIVE và R Accepted hợp quyền; thay đổi progress thực của Manager là `PROGRESS_CHANGED` cho R13. | FINAL-03 |
 | Decline DIRECT/REPLACEMENT không cần reason; nếu có thì lưu cùng actor, server timestamp, status, audit và giải phóng slot. | FINAL-04 |
-| Resolve blocker theo assignment owner; mặc định chờ PM xác nhận cho Manager đóng blocker OPEN chỉ sau khi assignment kết thúc, với reason và audit. | FINAL-06 |
+| Resolve blocker theo assignment owner; mặc định chờ PM xác nhận cho Manager đóng blocker OPEN chỉ sau khi assignment kết thúc, với reason và audit. (Đã thay bằng PM-03 ở 0.3.2-draft.) | FINAL-06 |
 | NQ05 làm rõ snapshot/evidence sau commit ≤5 giây, timer ≤60 phút theo server UTC và kiểm boundary bằng test clock/trigger MANUAL. | FINAL-02 |
 | Milestone phải cùng team với task; thêm `MILESTONE_TEAM_MISMATCH` 422 cho create/update. | FINAL-05 |
 
@@ -208,7 +208,7 @@ Trạng thái dưới đây ghi nhận phản hồi Jira ngày 17/11/2026. Các 
 - **R09 evidence/ACL:** công thức khớp; yêu cầu bổ sung khóa nhóm evidence và ghi quy tắc lọc cho history, alert, AI.
 - **R13:** đồng ý hướng timer/activity và đề nghị đổi reason sang `NO_QUALIFYING_ACTIVITY`.
 - **AI khi provider lỗi:** yêu cầu recheck quyền/context trước fallback, làm rõ shape `AIMessage` FAILED và quy tắc replay/retry.
-- **Expected test:** đồng ý các ca quyền Start/progress; nhánh Manager đóng blocker OPEN của assignment đã kết thúc vẫn chờ Bảo.
+- **Expected test:** đồng ý các ca quyền Start/progress; nhánh Manager đóng blocker OPEN của assignment đã kết thúc vẫn chờ Bảo tại thời điểm review; Bảo quyết sau đó ở PM-03.
 - **`/risk-rules`:** đồng ý dùng danh mục làm nguồn rule catalog/fixture.
 
 ### Đặng Văn Hiệp — Frontend (Jira CWRM-18, comment 10090)
@@ -233,3 +233,37 @@ Các phép tính của Ban là review tài liệu; các ca backend NOT RUN. Kế
 | **C — R13:** đổi giá trị reason trong ví dụ thành `NO_QUALIFYING_ACTIVITY`. | Ban, CWRM-18 comment 10085, mục 2 |
 | **D — AI:** recheck sau provider trước lưu/trả, định nghĩa fallback đã lọc, status/errorCode của tin, replay cùng ID và retry bằng ID mới; ERD giữ unique constraint và ghi chú cách xử lý. | Ban, CWRM-18 comment 10085, mục 3 |
 | **E — Frontend:** làm rõ phạm vi `Task.responsibleUsers`, `Task.availableActions` và `AssignmentResponseRequest.reason` khi DECLINED. | Hiệp, CWRM-18 comment 10090, điểm 1, 5–6 |
+
+## Quyết định PM-03 — 0.3.2-draft (17/11/2026)
+
+Lê Đình Bảo (PM) chọn phương án B tại Jira CWRM-18 comment 10100, trả lời câu hỏi ở CWRM-19 comment 10099; quyết định đối chiếu WBS Final v1.0 dòng FC-P22/PM-03. Đây là ngoại lệ có điều kiện của FINAL-06:
+
+- Khi assignment gắn với blocker còn hiệu lực, giữ FINAL-06: chỉ R chủ assignment resolve blocker của mình; Manager không mặc nhiên resolve blocker của R khác.
+- Khi assignment đã kết thúc và blocker còn OPEN, chỉ người đồng thời là Manager ACTIVE của workspace và A hiện hành của task được resolve. Manager ACTIVE khác nhận 403 `FORBIDDEN`.
+- Lý do bắt buộc, không rỗng; audit ghi actor, thời điểm server UTC, blocker, assignment, task và thay đổi trạng thái. Việc R rời task không phải bằng chứng blocker đã được xử lý.
+- A không còn hợp lệ thì chuyển A có audit trước; không mở quyền resolve cho mọi Manager.
+- Resolve blocker không tự unblock task và không đổi progress, R hay trạng thái Review/Done. Lịch sử blocker và assignment được giữ.
+
+### Ca QA cần đối chiếu (Bảo yêu cầu; expected theo contract, chưa chạy)
+
+| Ca | Thiết lập | Expected |
+|---|---|---|
+| Q1 — R còn hiệu lực | Assignment ACCEPTED chưa kết thúc; R chủ assignment gọi resolve | 200, blocker RESOLVED; resolutionNote tùy chọn |
+| Q2 — R còn hiệu lực, Manager gọi | Như Q1 nhưng người gọi là Manager, kể cả A | 403 `FORBIDDEN`, blocker vẫn OPEN |
+| Q3 — R đã kết thúc + đúng A | Assignment ended; người gọi là Manager ACTIVE và A hiện hành; có resolutionNote | 200, blocker RESOLVED, `resolvedByUserId` = A, audit đủ trường |
+| Q4 — R đã kết thúc + Manager khác | Assignment ended; người gọi là Manager ACTIVE nhưng không phải A | 403 `FORBIDDEN`, blocker vẫn OPEN |
+| Q5 — Thiếu lý do | Như Q3 nhưng không gửi resolutionNote hoặc gửi chuỗi rỗng | 400 `VALIDATION_ERROR`, blocker vẫn OPEN |
+| Q6 — Đổi A | Chuyển A qua `POST /tasks/{taskId}/accountable`, rồi A cũ và A mới lần lượt gọi resolve | A cũ 403 `FORBIDDEN`; A mới 200 |
+| Q7 — Blocker cuối | Task BLOCKED, resolve theo Q3 blocker OPEN cuối cùng | 200; task vẫn BLOCKED, progress/R không đổi; chỉ về IN_PROGRESS khi Manager gọi `/unblock` |
+
+### Thay đổi ở 0.3.2-draft
+
+So với 0.3.1-draft, `resolveBlocker` hẹp quyền: Manager ACTIVE không phải A trước đây được resolve blocker của assignment đã kết thúc, nay nhận 403. Không đổi shape request/response, cột hay bảng.
+
+| Thay đổi contract | Nguồn |
+|---|---|
+| `info.version` lên `0.3.2-draft`; Trạng thái Architecture/ERD cập nhật. | PM-03 |
+| `resolveBlocker`: `x-permission` đổi từ `[ASSIGNMENT_OWNER, WORKSPACE_MANAGER]` thành `[ASSIGNMENT_OWNER, TASK_ACCOUNTABLE]`; mô tả ghi ngoại lệ PM-03, chuyển A, audit, không tự unblock. | PM-03, CWRM-18 comment 10100 |
+| `ResolveBlockerRequest.resolutionNote` bắt buộc với A khi resolve theo ngoại lệ. | PM-03 |
+| `Task.availableActions`: `RESOLVE_BLOCKER` chỉ có cho Manager khi là A hiện hành, assignment đã kết thúc và blocker còn OPEN. | PM-03 |
+| Architecture mục 6, 7 và 8; ERD bảng `blockers`, bảng quy tắc và ghi chú cuối: bỏ chữ "chờ PM xác nhận", ghi quyết định PM-03. | PM-03 |
