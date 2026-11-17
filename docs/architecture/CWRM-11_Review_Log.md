@@ -150,20 +150,20 @@ Nguồn cập nhật là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-
 
 ### Điểm cần review trên 0.3.0-draft
 
-Trạng thái dưới đây ghi nhận phản hồi Jira ngày 17/11/2026. Các điểm cần Hiệp chốt và ngoại lệ Manager đóng blocker của assignment đã kết thúc chờ Lê Đình Bảo được giữ nguyên trạng thái chờ.
+Trạng thái dưới đây ghi nhận phản hồi Jira ngày 17/11/2026, cập nhật lần cuối theo xác nhận của Ban (CWRM-18 comment 10102) và Hiệp (CWRM-18 comment 10108) trên `0.3.2-draft`, commit `d583949`. Không còn câu hỏi nào ở trạng thái chờ.
 
 | Người review | Câu hỏi cụ thể | Trạng thái |
 |---|---|---|
-| Đặng Văn Hiệp | `Task.responsibleUsers[]` có đủ `assignmentId`, `taskRoleName`, `confirmedAt`, `effortEstimateHours`, `remainingEffortHours` để dựng màn Task/Review mà không gọi N+1 không? | CẦN XÁC NHẬN (17/11) — Khôi trả lời mảng chỉ gồm R hiện hành; Direct đang chờ và assignment đã kết thúc lấy ở `/tasks/{taskId}/assignments`; chờ Hiệp chốt. |
-| Đặng Văn Hiệp | `Task.openWork.state` cùng `openWorkState` filter có đủ phân biệt NOT_OPENED/OPEN/TEMPORARILY_FULL/CLOSED cho UI không? | CẦN XÁC NHẬN (17/11) — Khôi đã trả lời bằng state, eligibility và mã lỗi; chờ Hiệp chốt. |
-| Đặng Văn Hiệp | Metadata `predecessors[]` gồm team/title/status/dependencyWarning có đủ hiển thị dependency khác Team không cần gọi API predecessor không? | CẦN XÁC NHẬN (17/11) — Khôi đã trả lời; chờ Hiệp chốt. |
-| Đặng Văn Hiệp | Alert per-task kèm `type`, `groupKey`, `resolvedAt` và lọc `resolved` có đủ để gộp trên UI mà vẫn giữ ACL không? | CẦN XÁC NHẬN (17/11) — Khôi đã trả lời; chờ Hiệp chốt. |
-| Lê Quốc Ban | Evidence R09 theo horizon và bộ `reasonCode` có đủ kiểm fixture missing capacity/effort và lọc dữ liệu liên Team không? | CẦN ĐIỀU CHỈNH (17/11) — Công thức khớp; thiếu khóa nhóm evidence và quy tắc lọc cho history/alert/AI; đã sửa ở 0.3.1-draft. |
+| Đặng Văn Hiệp | `Task.responsibleUsers[]` có đủ `assignmentId`, `taskRoleName`, `confirmedAt`, `effortEstimateHours`, `remainingEffortHours` để dựng màn Task/Review mà không gọi N+1 không? | ĐỒNG Ý (17/11, comment 10108) — Mảng chỉ gồm R Accepted đang hiệu lực; Direct đang chờ và lịch sử assignment lấy ở `/tasks/{taskId}/assignments`. |
+| Đặng Văn Hiệp | `Task.openWork.state` cùng `openWorkState` filter có đủ phân biệt NOT_OPENED/OPEN/TEMPORARILY_FULL/CLOSED cho UI không? | ĐỒNG Ý (17/11, comment 10108) — UI quyết định Apply bằng `REQUEST_OPEN_WORK` hoặc `Eligibility.canApply/blockedReason`, gồm cả task IN_PROGRESS; Role/Skill không chặn Apply. |
+| Đặng Văn Hiệp | Metadata `predecessors[]` gồm team/title/status/dependencyWarning có đủ hiển thị dependency khác Team không cần gọi API predecessor không? | ĐỒNG Ý (17/11, comment 10108) — Đủ cho Finish-to-Start khác Team cùng Workspace; UI không mở chi tiết task ngoài quyền. |
+| Đặng Văn Hiệp | Alert per-task kèm `type`, `groupKey`, `resolvedAt` và lọc `resolved` có đủ để gộp trên UI mà vẫn giữ ACL không? | ĐỒNG Ý (17/11, comment 10108) — Backend lọc theo quyền người nhận qua `GET /alerts`. |
+| Lê Quốc Ban | Evidence R09 theo horizon và bộ `reasonCode` có đủ kiểm fixture missing capacity/effort và lọc dữ liệu liên Team không? | CẦN ĐIỀU CHỈNH (17/11) — Công thức khớp; thiếu khóa nhóm evidence và quy tắc lọc cho history/alert/AI; đã sửa ở 0.3.1-draft. ĐỒNG Ý trên 0.3.2-draft (comment 10102). |
 | Lê Quốc Ban | Các trường timer/activity và `ruleVersion=2.0.0` có đủ kiểm boundary/no-op/đợt IN_PROGRESS cho R13 không? | ĐỒNG Ý (17/11) — Đề nghị đổi tên reason; đã đổi. |
-| Lê Quốc Ban | `AIMessage` cùng fallback `details.retryable/messageId/fallbackExplanation` có đủ biểu diễn SUCCESS/FAILED và ca thử lại không? | CẦN ĐIỀU CHỈNH (17/11) — Recheck trước fallback, shape FAILED và replay/retry; đã sửa ở 0.3.1-draft. |
+| Lê Quốc Ban | `AIMessage` cùng fallback `details.retryable/messageId/fallbackExplanation` có đủ biểu diễn SUCCESS/FAILED và ca thử lại không? | CẦN ĐIỀU CHỈNH (17/11) — Recheck trước fallback, shape FAILED và replay/retry; đã sửa ở 0.3.1-draft. ĐỒNG Ý trên 0.3.2-draft (comment 10102). |
 | Đặng Văn Hiệp | `Task.availableActions` có thể hiển thị START và UPDATE_PROGRESS cho Manager ACTIVE khi đủ state guard không? | ĐỒNG Ý DÙNG LÀM NGUỒN QUYẾT ĐỊNH (17/11) — Hiệp đề nghị làm rõ phạm vi áp dụng và mã lỗi; đã bổ sung mô tả. |
 | Đặng Văn Hiệp | UI có thể cho Decline DIRECT/REPLACEMENT không cần reason, đồng thời gửi reason không rỗng nếu người dùng tự nhập không? | ĐỒNG Ý (17/11) — Yêu cầu schema thể hiện optional và không gửi chuỗi rỗng; schema đã đúng, bổ sung mô tả. |
-| Lê Quốc Ban | Bộ expected test có đủ kiểm tra quyền Start/progress của Manager và R cùng ngoại lệ resolve blocker chỉ sau khi assignment kết thúc không? | ĐỒNG Ý (17/11) cho Start/progress; nhánh đóng blocker của assignment đã kết thúc đã có quyết định PM-03 (phương án B), chờ Ban đối chiếu ca QA ở mục "Quyết định PM-03". |
+| Lê Quốc Ban | Bộ expected test có đủ kiểm tra quyền Start/progress của Manager và R cùng ngoại lệ resolve blocker chỉ sau khi assignment kết thúc không? | ĐỒNG Ý (17/11) cho Start/progress; nhánh đóng blocker của assignment đã kết thúc theo PM-03 (phương án B): Ban đã đối chiếu 7 ca Q1–Q7 và ĐỒNG Ý trên 0.3.2-draft (comment 10102). |
 | Lê Đình Bảo (PM) | Xác nhận phương án mặc định kỹ thuật: Manager ACTIVE chỉ resolve blocker OPEN khi assignment gắn vào đã kết thúc, bắt buộc reason và audit; Manager không resolve blocker của R còn hiệu lực? | ĐÃ QUYẾT (17/11) — PM-03 phương án B, Jira CWRM-18 comment 10100: chỉ Manager ACTIVE là A hiện hành của task; Manager khác trả 403. Đã áp dụng ở 0.3.2-draft. |
 | Lê Quốc Ban | Danh mục `/risk-rules` có đủ tên, baseLevel, boostable và mô tả để dùng làm nguồn rule catalog/fixture không? | ĐỒNG Ý (17/11) |
 
@@ -267,3 +267,27 @@ So với 0.3.1-draft, `resolveBlocker` hẹp quyền: Manager ACTIVE không ph�
 | `ResolveBlockerRequest.resolutionNote` bắt buộc với A khi resolve theo ngoại lệ. | PM-03 |
 | `Task.availableActions`: `RESOLVE_BLOCKER` chỉ có cho Manager khi là A hiện hành, assignment đã kết thúc và blocker còn OPEN. | PM-03 |
 | Architecture mục 6, 7 và 8; ERD bảng `blockers`, bảng quy tắc và ghi chú cuối: bỏ chữ "chờ PM xác nhận", ghi quyết định PM-03. | PM-03 |
+
+## Xác nhận review 0.3.2-draft (17/11/2026)
+
+Hai người review đã xác nhận trên OpenAPI `0.3.2-draft`, commit `d583949`. Contract không đổi sau các xác nhận này; mục này chỉ ghi kết luận vào Review Log.
+
+### Lê Quốc Ban — Risk/AI/QA (Jira CWRM-18, comment 10102; CWRM-28 comment 10112)
+
+- **R09/ACL:** đồng ý. `groupId` theo R/horizon và một quy tắc lọc chung cho current, history, alert và context AI; ví dụ Manager/Member ẩn `subjectUserId` ngoài quyền và `message` không nhận diện. +24 giờ 133,33% kích hoạt HIGH, +48 giờ 100% không kích hoạt riêng; `remaining = 0` hợp lệ; thiếu dữ liệu ra PARTIAL kèm gap.
+- **AI hậu kiểm:** đồng ý. Kiểm lại quyền và context sau mọi kết quả Gemini, trước khi lưu hoặc trả fallback; mất quyền 403, context đổi 409, giải phóng khóa, không lưu lượt và không trả fallback. Cùng `clientMessageId` là replay kể cả lượt FAILED; ID mới cho retry chủ động.
+- **PM-03:** Q1–Q7 khớp OpenAPI và ERD.
+- Kết luận: đạt ở mức review contract và expected test; Ban dùng contract này để khóa expected. Phiếu review và fixture lưu trong thư mục Drive của CWRM-28.
+
+### Đặng Văn Hiệp — Frontend (Jira CWRM-18, comment 10108; CWRM-25 comment 10113)
+
+- Đồng ý bốn điểm còn mở: `Task.responsibleUsers[]`, `Task.openWork.state`, `predecessors[]/successors[]`, Alert (chi tiết ở bảng "Điểm cần review trên 0.3.0-draft").
+- `availableActions` chỉ có trên `Task`, backend kiểm lại khi thực thi; Decline bỏ hẳn `reason`, không gửi chuỗi rỗng.
+- Theo PM-03, nút resolve blocker của assignment đã kết thúc chỉ hiện cho Manager ACTIVE là A hiện hành khi `availableActions` có `RESOLVE_BLOCKER`; resolve không tự unblock task.
+- Kết luận: đạt phần review frontend, không yêu cầu đổi schema. Danh sách ảnh hưởng frontend ở CWRM-25 comment 10096.
+
+### Trạng thái
+
+- Mọi câu hỏi review trên 0.3.0-draft đã đóng; PM-03 đã quyết.
+- Đây là xác nhận tài liệu và expected behavior. Chưa có mã backend theo contract này; toàn bộ ca backend/E2E vẫn NOT RUN.
+- Còn lại: Lê Đình Bảo (PM) nghiệm thu CWRM-18.
