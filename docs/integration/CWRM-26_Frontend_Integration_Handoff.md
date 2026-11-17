@@ -2,14 +2,14 @@
 
 **Phạm vi:** Chuẩn bị PR đưa frontend skeleton CWRM-14 vào `main` để Khôi review và tích hợp theo GH-INT-01 / CWRM-23. Nhánh nguồn của CWRM-26 tạo từ commit CWRM-14 đã nghiệm thu `b99950a`, không lấy commit tài liệu local chưa push `819caa8` hoặc thư mục backend chưa theo dõi trong checkout cũ.
 
-**Căn cứ:** Project Scope v0.2 Final và FINAL-01–08; OpenAPI CWRM-18 `0.3.0-draft` ở commit `2e19a4a` còn trong quá trình review. CWRM-25 đang chốt danh sách ảnh hưởng frontend; PR này bàn giao nền frontend, không nhận công việc Auth/Workspace web/API của CWRM-27.
+**Căn cứ:** Project Scope v0.2 Final và FINAL-01–08; OpenAPI CWRM-18 `0.3.2-draft` ở commit `d583949` còn trong quá trình review. Ban đã xác nhận phần Risk/AI/QA trên commit này; Hiệp cần chốt bốn điểm frontend theo phản hồi của Khôi ở CWRM-18. CWRM-25 đang chốt danh sách ảnh hưởng frontend; PR này bàn giao nền frontend, không nhận công việc Auth/Workspace web/API của CWRM-27.
 
 ## Kiểm tra trước PR
 
 | Hạng mục | Kết quả |
 |---|---|
 | So sánh với `origin/main` | `main` chưa có frontend; PR bổ sung frontend skeleton, docs UX và README từ nhánh CWRM-14. |
-| Đối chiếu PR contract CWRM-18 | Không có file trùng với thay đổi của frontend. Contract `0.3.0-draft` chưa được merge vào `main`; chỉ dùng để xác định impact. |
+| Đối chiếu PR contract CWRM-18 | Không có file trùng với thay đổi của frontend. Contract `0.3.2-draft` chưa được merge vào `main`; chỉ dùng để xác định impact. |
 | Đối chiếu PR backend CWRM-12 | Cả hai nhánh thêm `.gitignore` ở root. Đây là xung đột add/add khi merge; cần hợp nhất các rule ignore của cả backend và frontend, giữ `!.env.example`, rồi kiểm lại các file được track. Không lấy thư mục backend local chưa theo dõi làm đầu vào PR này. |
 | `npm.cmd ci` trong `frontend` | Thành công từ lockfile, 359 packages được cài. |
 | `npm.cmd run lint` | Exit 0, không có lỗi hoặc cảnh báo lint. |
@@ -27,7 +27,7 @@
 ## Việc còn chờ
 
 - CWRM-23: Khôi review PR, xử lý xung đột và tích hợp vào `main`.
-- CWRM-18: khóa contract sau các điểm review của Hiệp và Ban.
+- CWRM-18: Hiệp xác nhận bốn điểm frontend; Khôi cập nhật Review Log theo xác nhận của Ban và chốt contract với PM.
 - CWRM-24 và CWRM-27: backend Auth/Workspace và frontend dùng API thật.
 - CWRM-31: Ban chạy kiểm thử Auth/Workspace khi build và môi trường test sẵn sàng.
 

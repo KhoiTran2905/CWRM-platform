@@ -13,4 +13,4 @@ Mở http://localhost:3000 (chuyển đến `/manager`). Dùng `npm run lint` v�
 
 ## Bàn giao tích hợp Sprint 2
 
-Nhánh CWRM-26 đưa frontend skeleton đã nghiệm thu vào PR hướng `main`. [Bảng kiểm và điểm còn chờ](../docs/integration/CWRM-26_Frontend_Integration_Handoff.md) ghi đúng commit nguồn, kết quả build và xung đột cần xử lý khi ghép backend. Contract mục tiêu là OpenAPI `0.3.0-draft` của CWRM-18; Auth/Workspace API và giao diện dùng API thật được triển khai, kiểm thử ở CWRM-24/CWRM-27. Giao diện và dữ liệu minh họa trong PR này chưa phải bằng chứng Web–API–DB.
+Nhánh CWRM-26 đưa frontend skeleton đã nghiệm thu vào PR hướng `main`. [Bảng kiểm và điểm còn chờ](../docs/integration/CWRM-26_Frontend_Integration_Handoff.md) ghi đúng commit nguồn, kết quả build và xung đột cần xử lý khi ghép backend. Contract mục tiêu hiện là OpenAPI `0.3.2-draft` của CWRM-18; Auth/Workspace API và giao diện dùng API thật được triển khai, kiểm thử ở CWRM-24/CWRM-27. Giao diện và dữ liệu minh họa trong PR này chưa phải bằng chứng Web–API–DB.
