@@ -1,6 +1,6 @@
 # CWRM-11 — ERD sơ bộ và từ điển dữ liệu
 
-**Trạng thái:** bản thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). Đây là kiểu PostgreSQL dự kiến; Prisma schema/migration sẽ cụ thể hóa trong CWRM-12.
+**Trạng thái:** bản thiết kế 0.3.1-draft cập nhật ngày 17/11/2026 theo review CWRM-18; nền thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). Đây là kiểu PostgreSQL dự kiến; Prisma schema/migration sẽ cụ thể hóa trong CWRM-12.
 
 ## 1. Quy ước
 
@@ -205,7 +205,7 @@ erDiagram
         VARCHAR rule_version
         JSONB input_context
     }
-    risk_evidence { UUID id PK UUID risk_snapshot_id FK VARCHAR evidence_key VARCHAR rule_id JSONB value }
+    risk_evidence { UUID id PK UUID risk_snapshot_id FK VARCHAR evidence_key VARCHAR group_key VARCHAR rule_id JSONB value }
     risk_evaluation_gaps { UUID id PK UUID snapshot_id FK VARCHAR rule_id TIMESTAMPTZ horizon_at UUID subject_user_id FK VARCHAR reason_code }
     alerts {
         UUID id PK
@@ -300,12 +300,12 @@ Mọi bảng có `id UUID PK`. Bảng nghiệp vụ có `created_at TIMESTAMPTZ 
 | Bảng | Cột (kiểu; null; khóa) | Ghi chú |
 |---|---|---|
 | risk_snapshots | task_id UUID NN FK; risk_level, base_level VARCHAR(8) NN; evaluation_coverage VARCHAR(12) NN; evaluated_at TIMESTAMPTZ NN; rule_version VARCHAR(80) NN; triggered_rules TEXT[] NN; input_fingerprint VARCHAR(80) NN; input_context JSONB NN; trigger_source VARCHAR(12) NN; created_at TIMESTAMPTZ NN | Bất biến; LOW/MEDIUM/HIGH; coverage COMPLETE/PARTIAL; trigger EVENT/HOURLY/MANUAL; HOURLY dùng giờ server UTC, chu kỳ không quá 60 phút; rule ID khớp `^R(0[1-9]|1[0-3])$`. |
-| risk_evidence | risk_snapshot_id UUID NN FK; evidence_key VARCHAR(40) NN; source VARCHAR(16) NN; rule_id VARCHAR(3) ?; field VARCHAR(100) NN; value JSONB NN; unit VARCHAR(32) ?; created_at TIMESTAMPTZ NN | UQ snapshot_id,evidence_key; rule_id null hoặc R01–R13. API evidence.id ánh xạ evidence_key, ổn định trong snapshot. |
+| risk_evidence | risk_snapshot_id UUID NN FK; evidence_key VARCHAR(40) NN; group_key VARCHAR(40) ?; source VARCHAR(16) NN; rule_id VARCHAR(3) ?; field VARCHAR(100) NN; value JSONB NN; unit VARCHAR(32) ?; created_at TIMESTAMPTZ NN | UQ snapshot_id,evidence_key; rule_id null hoặc R01–R13. API evidence.id ánh xạ evidence_key; `evidence.groupId` ánh xạ `group_key`, nullable và ổn định trong snapshot. |
 | risk_evaluation_gaps | snapshot_id UUID NN FK; rule_id VARCHAR(3) NN; horizon_at TIMESTAMPTZ ?; subject_user_id UUID ? FK; reason_code VARCHAR(32) NN; message TEXT NN; created_at TIMESTAMPTZ NN | Bảng con cho `notEvaluated[]`; reasonCode CAPACITY_NOT_DECLARED/CAPACITY_NOT_APPROVED/CAPACITY_ZERO/REMAINING_EFFORT_MISSING. |
 | alerts | task_id UUID NN FK; current_snapshot_id UUID ? FK; type VARCHAR(24) NN; group_key VARCHAR(240) NN; rule_id VARCHAR(3) ?; risk_level VARCHAR(8) ?; status VARCHAR(12) NN; opened_at TIMESTAMPTZ NN; resolved_at TIMESTAMPTZ ?; created_at, updated_at | RISK/EARLY_DEPENDENCY/MILESTONE_CONFIRMATION; alert ghi theo task; group_key chỉ phục vụ UI. Early dependency chỉ phát khi predecessor trực tiếp có risk hiện hành MEDIUM/HIGH; không phát chỉ vì chưa DONE, không chép riskLevel và độc lập R06/R07. `resolved_at` khác read_at của recipient. |
 | alert_recipients | alert_id UUID NN FK; user_id UUID NN FK; recipient_labels VARCHAR(1)[] NN; read_at TIMESTAMPTZ ?; created_at TIMESTAMPTZ NN | UQ alert_id,user_id; labels A/R; `read_at` nằm ở người nhận. |
 | ai_threads | workspace_id UUID NN FK; task_id UUID NN FK; user_id UUID NN FK; last_message_at TIMESTAMPTZ ?; expires_at TIMESTAMPTZ ?; processing_started_at TIMESTAMPTZ ?; version INTEGER NN; created_at, updated_at | UQ workspace_id,task_id,user_id. Một thread private cho mỗi user/task; processing_started_at khóa một lượt; hết hạn sau 90 ngày từ tin cuối. |
-| ai_messages | thread_id UUID NN FK; role VARCHAR(12) NN; content TEXT NN; status VARCHAR(12) ?; error_code VARCHAR(80) ?; evidence_refs JSONB NN; suggestions JSONB NN; context JSONB ?; provider VARCHAR(120) ?; model VARCHAR(160) ?; latency_ms INTEGER ?; usage JSONB ?; client_message_id UUID NN; created_at TIMESTAMPTZ NN | USER/ASSISTANT; status SUCCESS/FAILED chỉ cho ASSISTANT; UQ thread_id,client_message_id,role. Không lưu prompt thô. Giữ tối đa 50 tin/thread. |
+| ai_messages | thread_id UUID NN FK; role VARCHAR(12) NN; content TEXT NN; status VARCHAR(12) ?; error_code VARCHAR(80) ?; evidence_refs JSONB NN; suggestions JSONB NN; context JSONB ?; provider VARCHAR(120) ?; model VARCHAR(160) ?; latency_ms INTEGER ?; usage JSONB ?; client_message_id UUID NN; created_at TIMESTAMPTZ NN | USER/ASSISTANT; status SUCCESS/FAILED chỉ cho ASSISTANT; tin USER có status null, tin ASSISTANT FAILED có error_code. UQ thread_id,client_message_id,role giữ nguyên. Cùng client_message_id replay nguyên kết quả đã lưu, kể cả lỗi FAILED; retry chủ động sau FAILED dùng ID mới để gọi provider. Lượt bị từ chối 403/409 không lưu nên cùng ID được xử lý như lượt mới. Không lưu prompt thô. Giữ tối đa 50 tin/thread. |
 | audit_logs | actor_user_id UUID ? FK→accounts.id; actor_kind VARCHAR(8) NN; object_type VARCHAR(40) NN; object_id UUID NN; action VARCHAR(80) NN; before_value, after_value JSONB ?; reason TEXT ?; created_at TIMESTAMPTZ NN | Append-only; USER/SYSTEM; object_id đa hình nên không FK tới một bảng cụ thể. Lưu old/new effort, role, withdrawal, replacement, capacity và quyết định Manager. |
 
 Tổng số bảng: **9 + 16 + 8 = 33**. `AIMessage.status`, `errorCode`, `evidenceRefs`, `suggestions`, `context`, `provider`, `model`, `latencyMs` và `usage` là các trường của bảng `ai_messages`; không tồn tại `ai_recommendations`.
@@ -357,7 +357,7 @@ Tổng số bảng: **9 + 16 + 8 = 33**. `AIMessage.status`, `errorCode`, `evide
 
 ### Quy ước mã lỗi liên quan
 
-Các mã dùng trong contract 0.3.0-draft gồm: `VALIDATION_ERROR`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `VERSION_CONFLICT`, `CAPACITY_EXCEEDED`, `UNIQUE_CONFLICT`, `INVALID_STATE_TRANSITION`, `OPEN_WORK_TEMPORARILY_FULL`, `OPEN_WORK_CLOSED`, `PREDECESSOR_NOT_DONE`, `OPEN_BLOCKERS_EXIST`, `NO_ACCEPTED_RESPONSIBLE`, `DEPENDENCY_CYCLE`, `CROSS_WORKSPACE_DEPENDENCY`, `MILESTONE_TEAM_MISMATCH`, `ACCOUNTABLE_NOT_MANAGER`, `LAST_MANAGER_REQUIRED`, `RESPONSIBILITY_REQUIRED`, `INVITEE_NOT_REGISTERED`, `ASSIGNMENT_CHANGE_NOT_ALLOWED_IN_REVIEW`, `PROGRESS_NOT_COMPLETE`, `RESPONSIBLE_CONFIRMATION_MISSING`, `EFFORT_ALLOCATION_EXCEEDED`, `WORK_UPDATE_DUPLICATE`, `RISK_INPUT_INVALID`, `RISK_EVALUATION_FAILED`, `AI_CONTEXT_UNAVAILABLE`, `AI_CONTEXT_CHANGED`, `AI_TURN_IN_PROGRESS`, `AI_PROVIDER_ERROR`, `AI_OUTPUT_INVALID`, `AI_TIMEOUT`, `AI_QUOTA_EXCEEDED`, `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`. Danh sách đầy đủ và status nằm tại `openapi.yaml`.
+Các mã dùng trong contract 0.3.1-draft gồm: `VALIDATION_ERROR`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `VERSION_CONFLICT`, `CAPACITY_EXCEEDED`, `UNIQUE_CONFLICT`, `INVALID_STATE_TRANSITION`, `OPEN_WORK_TEMPORARILY_FULL`, `OPEN_WORK_CLOSED`, `PREDECESSOR_NOT_DONE`, `OPEN_BLOCKERS_EXIST`, `NO_ACCEPTED_RESPONSIBLE`, `DEPENDENCY_CYCLE`, `CROSS_WORKSPACE_DEPENDENCY`, `MILESTONE_TEAM_MISMATCH`, `ACCOUNTABLE_NOT_MANAGER`, `LAST_MANAGER_REQUIRED`, `RESPONSIBILITY_REQUIRED`, `INVITEE_NOT_REGISTERED`, `ASSIGNMENT_CHANGE_NOT_ALLOWED_IN_REVIEW`, `PROGRESS_NOT_COMPLETE`, `RESPONSIBLE_CONFIRMATION_MISSING`, `EFFORT_ALLOCATION_EXCEEDED`, `WORK_UPDATE_DUPLICATE`, `RISK_INPUT_INVALID`, `RISK_EVALUATION_FAILED`, `AI_CONTEXT_UNAVAILABLE`, `AI_CONTEXT_CHANGED`, `AI_TURN_IN_PROGRESS`, `AI_PROVIDER_ERROR`, `AI_OUTPUT_INVALID`, `AI_TIMEOUT`, `AI_QUOTA_EXCEEDED`, `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`. Danh sách đầy đủ và status nằm tại `openapi.yaml`.
 
 ## 7. Chỉ mục tra cứu dự kiến
 

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CWRM API
-  version: 0.3.0-draft
+  version: 0.3.1-draft
   description: |
     REST contract CWRM MVP theo Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026), thay cho Scope v0.1. Enum dùng UPPER_SNAKE_CASE; API dùng camelCase; DB dùng snake_case. Scope gồm S01–S12 và rule R01–R13. Rule Set v0.2 dùng ruleVersion 2.0.0; snapshot cũ giữ ruleVersion cũ.
     Manager và Member là hai quyền hệ thống. Main Role theo Team, Task Role theo Assignment, Skill do Member khai; các nhãn chuyên môn không cấp quyền. Task status, Assignment status, Request status, confirmation milestone và coverage là các trạng thái riêng. Mọi timestamp là UTC ISO-8601; ghi có expectedVersion; list dùng page/pageSize. Phong bì lỗi thống nhất { error: { code, message, details } }.
@@ -52,7 +52,7 @@ info:
     | 422 | EFFORT_ALLOCATION_EXCEEDED | Tổng effort allocation vượt Task estimate. |
     | 422 | WORK_UPDATE_DUPLICATE | Nội dung trùng Work Update gần nhất của tác giả trên task. |
     | 422 | AI_CONTEXT_UNAVAILABLE | Không dựng được context AI hợp lệ; provider không được gọi. |
-    | 422 | RISK_INPUT_INVALID | Risk input thiếu/sai miền; details là danh sách field/problem. |
+    | 422 | RISK_INPUT_INVALID | Chỉ input bắt buộc thiếu hoặc sai miền, ví dụ deadline/progress; details là danh sách field/problem. Thiếu capacity hoặc remaining effort là gap trong snapshot PARTIAL, không phải lỗi input. |
     | 500 | INTERNAL_ERROR | Lỗi hệ thống không dự kiến. |
     | 502 | AI_PROVIDER_ERROR | Gemini/provider trả lỗi. |
     | 502 | AI_OUTPUT_INVALID | Output sai cấu trúc, số liệu hoặc evidence linkage. |
@@ -61,7 +61,7 @@ info:
     | 503 | RISK_EVALUATION_FAILED | Engine thất bại; không tạo snapshot LOW giả. |
     | 503 | SERVICE_UNAVAILABLE | GET /health không truy vấn được database. |
 
-    Lỗi AI 502/503 lưu tin USER và ASSISTANT FAILED trước khi trả lỗi; details gồm retryable, messageId của tin FAILED và fallbackExplanation từ evidence snapshot hiện hành (null nếu chưa có snapshot). `RISK_INPUT_INVALID.details` là danh sách { field, problem }, không chứa stack trace.
+    Sau khi Gemini trả về, API kiểm lại quyền và context trước mọi nhánh lưu hoặc trả nội dung. Nếu quyền/context còn nguyên mà provider lỗi hoặc output sai, lỗi AI 502/503 lưu tin USER và ASSISTANT FAILED; details gồm retryable, messageId của tin FAILED và fallbackExplanation chỉ dựng từ evidence của snapshot hiện hành đã lọc theo người gọi (null nếu chưa có snapshot). Nếu quyền mất hoặc context đổi thì trả 403/409, không lưu tin nào của lượt đó và không kèm fallback. `RISK_INPUT_INVALID.details` là danh sách { field, problem }, không chứa stack trace.
 servers:
   - url: http://localhost:3001/api/v1
     description: Máy phát triển mẫu; cổng sẽ chốt ở CWRM-12
@@ -1509,10 +1509,18 @@ paths:
       operationId: getCurrentTaskRisk
       tags: [Risk]
       summary: Xem risk snapshot hiện hành
-      description: Quyền TASK_ACCESS; isCurrent=false khi dữ liệu task đã đổi sau snapshot hoặc lần đánh giá gần nhất lỗi, khi đó UI không trình bày snapshot như kết quả mới. Với MEMBER, evidence về workload chỉ có số tổng hợp, không kèm tên hay nội dung task ngoài quyền xem (Scope S10). Không ai nhập hoặc sửa risk bằng tay.
+      description: |
+        Quyền TASK_ACCESS; isCurrent=false khi dữ liệu task đã đổi sau snapshot hoặc lần đánh giá gần nhất lỗi, khi đó UI không trình bày snapshot như kết quả mới. Với MEMBER, evidence/gap về workload chỉ gồm dữ liệu của chính người gọi; phần của người khác chỉ còn số tổng hợp, không có user ID, task ID, tên hay nội dung nhận diện; Manager của workspace thấy đầy đủ. Không ai nhập hoặc sửa risk bằng tay.
       x-permission: TASK_ACCESS
       responses:
-        '200': {description: Snapshot gần nhất và trạng thái currentness, content: {application/json: {schema: {$ref: '#/components/schemas/CurrentRisk'}}}}
+        '200':
+          description: Snapshot gần nhất và trạng thái currentness
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentRisk'}
+              examples:
+                manager: {$ref: '#/components/examples/CurrentRiskManager'}
+                member: {$ref: '#/components/examples/CurrentRiskMember'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
@@ -1525,13 +1533,21 @@ paths:
       operationId: listTaskRiskSnapshots
       tags: [Risk]
       summary: Xem lịch sử risk
-      description: Quyền TASK_ACCESS; snapshot bất biến, phân trang.
+      description: |
+        Quyền TASK_ACCESS; snapshot bất biến, phân trang. Với MEMBER, evidence/gap về workload chỉ gồm dữ liệu của chính người gọi; phần của người khác chỉ còn số tổng hợp, không có user ID, task ID, tên hay nội dung nhận diện; Manager của workspace thấy đầy đủ.
       x-permission: TASK_ACCESS
       parameters:
         - {$ref: '#/components/parameters/Page'}
         - {$ref: '#/components/parameters/PageSize'}
       responses:
-        '200': {description: Lịch sử phân trang, content: {application/json: {schema: {$ref: '#/components/schemas/RiskSnapshotPage'}}}}
+        '200':
+          description: Lịch sử phân trang
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RiskSnapshotPage'}
+              examples:
+                manager: {$ref: '#/components/examples/RiskHistoryManager'}
+                member: {$ref: '#/components/examples/RiskHistoryMember'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
@@ -1607,7 +1623,8 @@ paths:
       operationId: listMyAlerts
       tags: [Dashboard]
       summary: Liệt kê cảnh báo của tôi
-      description: Quyền SELF; chỉ trả alert của task caller có quyền, dù có cùng groupKey. Lọc theo type, groupKey, resolved, status, unread. readAt của recipient khác resolvedAt của alert.
+      description: |
+        Quyền SELF; chỉ trả alert của task caller có quyền, dù có cùng groupKey. Lọc theo type, groupKey, resolved, status, unread. readAt của recipient khác resolvedAt của alert. Với MEMBER, evidence/gap về workload chỉ gồm dữ liệu của chính người gọi; phần của người khác chỉ còn số tổng hợp, không có user ID, task ID, tên hay nội dung nhận diện; Manager của workspace thấy đầy đủ.
       x-permission: SELF
       parameters:
         - {$ref: '#/components/parameters/Page'}
@@ -2341,7 +2358,7 @@ paths:
       tags: [AI]
       summary: Gửi một lượt AI Chat
       description: |
-        Quyền AI_CHAT_ACCESS; body content dài 1–2000 ký tự và clientMessageId UUID. Không streaming. Một thread chỉ xử lý một lượt; thread được xác định bằng caller + taskId. Lưu tối đa 50 tin, prompt tối đa 10 tin gần nhất và backend giới hạn kích thước. Kiểm quyền/context trước và sau Gemini. Context unavailable trả 422 không gọi provider; context đổi trả 409, quyền mất trả 403. Lỗi provider lưu USER và ASSISTANT FAILED trước khi trả lỗi; cả hai đều tính vào giới hạn 50 tin và khi vượt thì xóa tin cũ nhất. Gửi lại cùng clientMessageId sau một lượt đã SUCCESS trả lại kết quả cũ, không gọi provider lần nữa. Câu trả lời phải khớp dữ kiện quan trọng và evidenceRefs phải có trong snapshot context.
+        Quyền AI_CHAT_ACCESS; body content dài 1–2000 ký tự và clientMessageId UUID. Không streaming. Một thread chỉ xử lý một lượt; thread được xác định bằng caller + taskId. Lưu tối đa 50 tin, prompt tối đa 10 tin gần nhất và backend giới hạn kích thước. Context unavailable trả 422 không gọi provider. Sau khi provider trả về (thành công hoặc lỗi), API kiểm lại quyền và context (taskVersion/snapshot hiện hành) trước mọi nhánh lưu hoặc trả nội dung. Quyền mất trả 403, context quan trọng đổi trả 409; cả hai trường hợp không lưu tin nào của lượt này, giải phóng processing và không kèm fallback. Nếu quyền/context còn nguyên mà provider lỗi hoặc output sai, lưu USER và ASSISTANT FAILED cùng errorCode, giải phóng processing rồi trả 502/503 với retryable, messageId của tin FAILED và fallbackExplanation chỉ dựng từ evidence của snapshot hiện hành đã lọc theo người gọi (null nếu chưa có snapshot). Output hợp lệ được kiểm dữ kiện và evidence refs rồi lưu USER + ASSISTANT SUCCESS, trả 200. Mọi nhánh sau khi khóa thread đều giải phóng processing. Gửi lại cùng clientMessageId là replay kết quả đã lưu và không gọi provider: SUCCESS trả 200 cũ; FAILED trả cùng lỗi 502/503 với cùng messageId. Chủ động thử lại sau FAILED phải dùng clientMessageId mới để tạo lượt mới và gọi provider lại. Lượt bị từ chối 403/409 sau provider không lưu gì nên gửi lại cùng clientMessageId được xử lý như lượt mới. Với MEMBER, evidence/gap về workload chỉ gồm dữ liệu của chính người gọi; phần của người khác chỉ còn số tổng hợp, không có user ID, task ID, tên hay nội dung nhận diện; Manager của workspace thấy đầy đủ. Context gửi provider chỉ nhận evidence/gap workload đã lọc theo quy tắc này. Câu trả lời phải khớp dữ kiện quan trọng và evidenceRefs phải có trong snapshot context.
       x-permission: AI_CHAT_ACCESS
       requestBody:
         required: true
@@ -2458,7 +2475,8 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
     RiskInputInvalid:
-      description: '422 RISK_INPUT_INVALID khi input risk thiếu hoặc sai miền; details là danh sách lỗi theo field, không có stack trace và không tạo snapshot.'
+      description: |
+        422 RISK_INPUT_INVALID chỉ dành cho input bắt buộc bị thiếu hoặc sai miền, ví dụ deadline hoặc progress; details là danh sách lỗi theo field, không có stack trace và không tạo snapshot. remainingEffortHours = 0 là hợp lệ, không tạo gap. remaining effort null tạo gap REMAINING_EFFORT_MISSING; capacity chưa khai/chưa duyệt/bằng 0 tạo gap CAPACITY_NOT_DECLARED/CAPACITY_NOT_APPROVED/CAPACITY_ZERO. Các gap này tạo snapshot evaluationCoverage=PARTIAL và các rule còn lại vẫn được đánh giá, không trả RISK_INPUT_INVALID.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
@@ -2475,7 +2493,7 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
     AIGatewayError:
-      description: 502 AI_PROVIDER_ERROR hoặc AI_OUTPUT_INVALID. Tin ASSISTANT FAILED đã lưu trước response; details gồm retryable, messageId và fallbackExplanation từ snapshot hiện hành (null nếu chưa có snapshot).
+      description: 502 AI_PROVIDER_ERROR hoặc AI_OUTPUT_INVALID khi quyền và context còn nguyên sau lần kiểm lại. Tin ASSISTANT FAILED đã lưu trước response; details gồm retryable, messageId và fallbackExplanation chỉ dựng từ evidence của snapshot hiện hành đã lọc theo người gọi (null nếu chưa có snapshot). Nếu quyền mất hoặc context đổi, API trả 403/409, không lưu tin nào và không kèm fallback.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
@@ -2488,7 +2506,7 @@ components:
                 messageId: 550e8400-e29b-41d4-a716-446655440062
                 fallbackExplanation: 'R03 kích hoạt vì còn 40 giờ tới deadline và tiến độ 30%, dưới 50%. Mức cơ sở MEDIUM được nâng lên HIGH do priority HIGH.'
     AIUnavailable:
-      description: 503 AI_TIMEOUT hoặc AI_QUOTA_EXCEEDED. Tin ASSISTANT FAILED đã lưu trước response; details gồm retryable, messageId và fallbackExplanation từ snapshot hiện hành (null nếu chưa có snapshot).
+      description: 503 AI_TIMEOUT hoặc AI_QUOTA_EXCEEDED khi quyền và context còn nguyên sau lần kiểm lại. Tin ASSISTANT FAILED đã lưu trước response; details gồm retryable, messageId và fallbackExplanation chỉ dựng từ evidence của snapshot hiện hành đã lọc theo người gọi (null nếu chưa có snapshot). Nếu quyền mất hoặc context đổi, API trả 403/409, không lưu tin nào và không kèm fallback.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
@@ -2732,7 +2750,7 @@ components:
         responsibleUserIds: {type: array, description: R từ assignment ACCEPTED hiệu lực., items: {type: string, format: uuid}}
         responsibleUsers:
           type: array
-          description: Tóm tắt R đầy đủ để UI review không gọi N+1.
+          description: Mảng chỉ gồm R hiện hành (assignment ACCEPTED chưa kết thúc); Direct đang chờ và assignment đã kết thúc lấy ở GET /tasks/{taskId}/assignments. Tóm tắt R đầy đủ để UI review không gọi N+1.
           items:
             type: object
             required: [assignmentId, userId, displayName, taskRoleName, confirmedAt, effortEstimateHours, remainingEffortHours]
@@ -2782,7 +2800,7 @@ components:
         availableActions:
           type: array
           description: |
-            Các action được tính cho người gọi theo trạng thái hiện tại của task; không thay cho kiểm tra phía server. START và UPDATE_PROGRESS có thể xuất hiện cho Manager ACTIVE hoặc R Accepted còn hiệu lực khi đủ điều kiện tương ứng; START cần task TO_DO, A hợp lệ, ít nhất một R Accepted và mọi predecessor trực tiếp DONE; UPDATE_PROGRESS chỉ ở IN_PROGRESS/BLOCKED. SUBMIT_REVIEW chỉ có khi progress bằng 100, mọi R Accepted hiệu lực đã có confirmedAt và không còn blocker OPEN. UNBLOCK chỉ có khi task BLOCKED và không còn blocker OPEN. RESOLVE_BLOCKER dành cho chủ assignment gắn blocker còn hiệu lực; Manager chỉ có action này nếu assignment đã kết thúc và blocker còn OPEN. Các action về assignment, xác nhận và checklist cũng phản ánh điều kiện trạng thái tương ứng.
+            Trường này chỉ có trên Task, tính cho người gọi và gồm action ở mức task, assignment, checklist và blocker. UI ẩn hoặc vô hiệu nút nếu action không có trong danh sách. Server vẫn kiểm khi thực thi và trả 409 VERSION_CONFLICT, 403 FORBIDDEN hoặc 422 với mã guard tương ứng. Các action được tính theo trạng thái hiện tại, không thay cho kiểm tra phía server. START và UPDATE_PROGRESS có thể xuất hiện cho Manager ACTIVE hoặc R Accepted còn hiệu lực khi đủ điều kiện tương ứng; START cần task TO_DO, A hợp lệ, ít nhất một R Accepted và mọi predecessor trực tiếp DONE; UPDATE_PROGRESS chỉ ở IN_PROGRESS/BLOCKED. SUBMIT_REVIEW chỉ có khi progress bằng 100, mọi R Accepted hiệu lực đã có confirmedAt và không còn blocker OPEN. UNBLOCK chỉ có khi task BLOCKED và không còn blocker OPEN. RESOLVE_BLOCKER dành cho chủ assignment gắn blocker còn hiệu lực; Manager chỉ có action này nếu assignment đã kết thúc và blocker còn OPEN. Các action về assignment, xác nhận và checklist cũng phản ánh điều kiện trạng thái tương ứng.
           items:
             type: string
             enum: [EDIT_TASK, UPDATE_REQUIRED_PEOPLE, TRANSFER_ACCOUNTABILITY, START, UPDATE_PROGRESS, SUBMIT_REVIEW, APPROVE, RETURN, BLOCK, UNBLOCK, CREATE_MANAGEMENT_INTERVENTION, CREATE_DIRECT_ASSIGNMENT, RESPOND_TO_ASSIGNMENT, END_ASSIGNMENT, OPEN_OPEN_WORK, CLOSE_OPEN_WORK, REQUEST_OPEN_WORK, WITHDRAW_OPEN_WORK_REQUEST, APPROVE_OPEN_WORK_REQUEST, REJECT_OPEN_WORK_REQUEST, REQUEST_WITHDRAWAL, CANCEL_WITHDRAWAL, APPROVE_WITHDRAWAL, REJECT_WITHDRAWAL, CREATE_REPLACEMENT, CONFIRM_ASSIGNMENT, UNCONFIRM_ASSIGNMENT, EDIT_CHECKLIST, UPDATE_TASK_ROLE, ALLOCATE_EFFORT, UPDATE_REMAINING_EFFORT, UPDATE_RACI_CONTACTS, CREATE_BLOCKER, RESOLVE_BLOCKER, CREATE_WORK_UPDATE, CREATE_COMMENT, ADD_DEPENDENCY, REMOVE_DEPENDENCY, EVALUATE_RISK, OPEN_AI_CHAT]
@@ -3005,7 +3023,7 @@ components:
           required: [response, expectedVersion]
           properties:
             response: {type: string, enum: [DECLINED]}
-            reason: {type: string, minLength: 1, maxLength: 1000}
+            reason: {type: string, minLength: 1, maxLength: 1000, description: 'Tùy chọn; nếu không có lý do thì bỏ hẳn trường này, không gửi chuỗi rỗng.'}
             expectedVersion: {type: integer, minimum: 1}
     ReasonVersionRequest:
       type: object
@@ -3238,7 +3256,7 @@ components:
         horizonAt: {type: string, format: date-time, nullable: true}
         subjectUserId: {type: string, format: uuid, nullable: true}
         reasonCode: {type: string, enum: [CAPACITY_NOT_DECLARED, CAPACITY_NOT_APPROVED, CAPACITY_ZERO, REMAINING_EFFORT_MISSING]}
-        message: {type: string}
+        message: {type: string, description: 'Được dựng theo mẫu từ reasonCode; không chứa tên, user ID, task ID hay nội dung nhận diện.'}
       description: subjectUserId trả null với người gọi không có quyền xem workload của Member đó.
     RiskRule:
       type: object
@@ -3358,7 +3376,13 @@ components:
             - {type: number, nullable: true}
             - {type: boolean, nullable: true}
         unit: {type: string, nullable: true}
-      description: 'Evidence R09 dùng các field subjectUserId, horizonAt, approvedWeeklyHours, remainingContinuousHoursToDeadline, availableHours, cumulativeRemainingHours, workloadRatioPercent cùng hai ngưỡng mediumThresholdPercent (100) và highThresholdPercent (125); mỗi mốc quá tải của mỗi R là một nhóm evidence. Evidence R13 dùng currentInProgressSince, lastQualifyingActivityAt, elapsedHours, thresholdHours (72) và reason. Với MEMBER, evidence R09 chỉ gồm workload của chính người gọi; workload của người khác chỉ còn số tổng hợp, không có tên hay id task ngoài quyền.'
+        groupId:
+          type: string
+          nullable: true
+          description: |
+            Chuỗi opaque, ổn định trong phạm vi một snapshot. Mọi dòng evidence của cùng một R tại cùng một mốc (horizon) của R09 dùng chung một groupId. Evidence không thuộc nhóm nào thì groupId null hoặc vắng. Client không được suy nghĩa từ nội dung chuỗi.
+      description: |
+        Evidence R09 dùng các field subjectUserId, horizonAt, approvedWeeklyHours, remainingContinuousHoursToDeadline, availableHours, cumulativeRemainingHours, workloadRatioPercent cùng hai ngưỡng mediumThresholdPercent (100) và highThresholdPercent (125); mỗi nhóm được nhận diện bằng groupId, với mọi dòng của cùng một R tại cùng một horizon dùng chung groupId. Evidence R13 dùng currentInProgressSince, lastQualifyingActivityAt, elapsedHours, thresholdHours (72) và reason.
     RiskSnapshot:
       type: object
       required: [id, taskId, riskLevel, baseLevel, evaluatedAt, ruleVersion, triggeredRules, evaluationCoverage, notEvaluated, evidence, inputFingerprint, triggerSource]
@@ -3382,7 +3406,8 @@ components:
           items: {$ref: '#/components/schemas/RiskEvidence'}
         inputFingerprint: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
         triggerSource: {type: string, enum: [EVENT, HOURLY, MANUAL], description: 'HOURLY là timer định kỳ có chu kỳ không quá 60 phút và dùng giờ server UTC; MANUAL do Manager yêu cầu. API không nhận evaluatedAt hoặc thời gian đánh giá từ client.'}
-      description: 'PARTIAL nghĩa là một số rule hoặc mốc thiếu dữ liệu (liệt kê ở notEvaluated) trong khi các rule khác vẫn được đánh giá và riskLevel vẫn hợp lệ. isCurrent=false nghĩa là snapshot đã cũ so với dữ liệu hiện tại. evaluationError nghĩa là cả lần đánh giá thất bại và không có snapshot LOW giả nào được tạo. Ba tình huống này độc lập với nhau.'
+      description: |
+        PARTIAL nghĩa là một số rule hoặc mốc thiếu dữ liệu (liệt kê ở notEvaluated) trong khi các rule khác vẫn được đánh giá và riskLevel vẫn hợp lệ. remainingEffortHours = 0 là hợp lệ, không tạo gap. remaining effort null tạo REMAINING_EFFORT_MISSING; capacity chưa khai/chưa duyệt/bằng 0 tạo CAPACITY_NOT_DECLARED/CAPACITY_NOT_APPROVED/CAPACITY_ZERO. Các gap này vẫn tạo snapshot evaluationCoverage=PARTIAL và không ngăn đánh giá các rule còn lại. 422 RISK_INPUT_INVALID chỉ dành cho input bắt buộc thiếu hoặc sai miền, ví dụ deadline/progress. isCurrent=false nghĩa là snapshot đã cũ so với dữ liệu hiện tại. evaluationError nghĩa là cả lần đánh giá thất bại và không có snapshot LOW giả nào được tạo. Ba tình huống này độc lập với nhau.
       example:
         id: 550e8400-e29b-41d4-a716-446655440051
         taskId: 550e8400-e29b-41d4-a716-446655440103
@@ -3420,7 +3445,7 @@ components:
             source: evaluation
             ruleId: R13
             field: reason
-            value: NO_QUALIFYING_WORK_UPDATE
+            value: NO_QUALIFYING_ACTIVITY
         inputFingerprint: sha256:0000000000000000000000000000000000000000000000000000000000000000
         triggerSource: HOURLY
     CurrentRisk:
@@ -3464,7 +3489,8 @@ components:
         openedAt: {type: string, format: date-time}
         resolvedAt: {type: string, format: date-time, nullable: true}
         unread: {type: boolean}
-      description: 'Alert RISK và EARLY_DEPENDENCY ghi theo từng task (taskId có giá trị); EARLY_DEPENDENCY chỉ phát khi predecessor trực tiếp có risk snapshot hiện hành MEDIUM/HIGH, không chỉ vì chưa DONE, không sao chép riskLevel và độc lập với R06/R07. Alert MILESTONE_CONFIRMATION ghi theo milestone (milestoneId có giá trị, taskId null). groupKey chỉ là khóa để UI gộp hiển thị theo nguyên nhân gốc, không gộp bản ghi. readAt nằm ở AlertRecipient và tách biệt với resolvedAt của alert.'
+      description: |
+        Alert RISK và EARLY_DEPENDENCY ghi theo từng task (taskId có giá trị); EARLY_DEPENDENCY chỉ phát khi predecessor trực tiếp có risk snapshot hiện hành MEDIUM/HIGH, không chỉ vì chưa DONE, không sao chép riskLevel và độc lập với R06/R07. Alert MILESTONE_CONFIRMATION ghi theo milestone (milestoneId có giá trị, taskId null). groupKey chỉ là khóa để UI gộp hiển thị theo nguyên nhân gốc, không gộp bản ghi. readAt nằm ở AlertRecipient và tách biệt với resolvedAt của alert. Với MEMBER, evidence/gap về workload chỉ gồm dữ liệu của chính người gọi; phần của người khác chỉ còn số tổng hợp, không có user ID, task ID, tên hay nội dung nhận diện; Manager của workspace thấy đầy đủ.
     AlertRecipient:
       type: object
       required: [alertId, userId, recipientLabels, readAt]
@@ -3803,13 +3829,14 @@ components:
     AIMessage:
       type: object
       required: [id, role, content, createdAt]
+      description: Tin ASSISTANT luôn có status SUCCESS hoặc FAILED; tin USER có status null; tin ASSISTANT FAILED luôn có errorCode.
       properties:
         id: {type: string, format: uuid}
         role: {$ref: '#/components/schemas/AIMessageRole'}
         content: {type: string}
         createdAt: {type: string, format: date-time}
-        status: {type: string, nullable: true, enum: [SUCCESS, FAILED, null], description: Chỉ có ở tin ASSISTANT.}
-        errorCode: {type: string, nullable: true}
+        status: {type: string, nullable: true, enum: [SUCCESS, FAILED, null], description: ASSISTANT luôn là SUCCESS hoặc FAILED; USER là null.}
+        errorCode: {type: string, nullable: true, description: Bắt buộc khi tin ASSISTANT có status FAILED.}
         evidenceRefs:
           type: array
           description: Chỉ có ở tin ASSISTANT; mỗi tham chiếu phải tồn tại trong snapshot của context.
@@ -4027,7 +4054,10 @@ components:
             message: {type: string}
             details:
               oneOf:
-                - {type: object, additionalProperties: true}
+                - type: object
+                  additionalProperties: true
+                  properties:
+                    fallbackExplanation: {type: string, nullable: true}
                 - type: array
                   items:
                     type: object
@@ -4040,3 +4070,252 @@ components:
           code: OPEN_WORK_TEMPORARILY_FULL
           message: Hết suất tạm thời do lời mời chờ xác nhận
           details: {}
+  examples:
+    CurrentRiskManager:
+      summary: Snapshot Manager; nhóm +24 giờ 133.33% kích hoạt R09, nhóm +48 giờ 100% không kích hoạt.
+      value:
+        snapshot: &riskSnapshotManager
+          id: 550e8400-e29b-41d4-a716-446655440051
+          taskId: 550e8400-e29b-41d4-a716-446655440103
+          riskLevel: HIGH
+          baseLevel: HIGH
+          evaluatedAt: '2026-11-14T03:00:00Z'
+          ruleVersion: '2.0.0'
+          triggeredRules: [R09]
+          evaluationCoverage: PARTIAL
+          notEvaluated:
+            - ruleId: R09
+              horizonAt: '2026-11-15T03:00:00Z'
+              subjectUserId: 550e8400-e29b-41d4-a716-446655440004
+              reasonCode: CAPACITY_NOT_APPROVED
+              message: Capacity chưa được duyệt.
+          evidence:
+            - id: ev-r09-a-subject
+              groupId: opaque-7f31
+              source: task
+              ruleId: R09
+              field: subjectUserId
+              value: 550e8400-e29b-41d4-a716-446655440003
+            - id: ev-r09-a-horizon
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: horizonAt
+              value: '2026-11-15T03:00:00Z'
+            - id: ev-r09-a-remaining-time
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: remainingContinuousHoursToDeadline
+              value: 24
+              unit: hours
+            - id: ev-r09-a-capacity
+              groupId: opaque-7f31
+              source: task
+              ruleId: R09
+              field: approvedWeeklyHours
+              value: 21
+              unit: hours
+            - id: ev-r09-a-available
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: availableHours
+              value: 3
+              unit: hours
+            - id: ev-r09-a-remaining
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: cumulativeRemainingHours
+              value: 4
+              unit: hours
+            - id: ev-r09-a-ratio
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: workloadRatioPercent
+              value: 133.33
+              unit: percent
+            - id: ev-r09-b-subject
+              groupId: opaque-c209
+              source: task
+              ruleId: R09
+              field: subjectUserId
+              value: 550e8400-e29b-41d4-a716-446655440003
+            - id: ev-r09-b-horizon
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: horizonAt
+              value: '2026-11-16T03:00:00Z'
+            - id: ev-r09-b-remaining-time
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: remainingContinuousHoursToDeadline
+              value: 48
+              unit: hours
+            - id: ev-r09-b-capacity
+              groupId: opaque-c209
+              source: task
+              ruleId: R09
+              field: approvedWeeklyHours
+              value: 21
+              unit: hours
+            - id: ev-r09-b-available
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: availableHours
+              value: 6
+              unit: hours
+            - id: ev-r09-b-remaining
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: cumulativeRemainingHours
+              value: 6
+              unit: hours
+            - id: ev-r09-b-ratio
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: workloadRatioPercent
+              value: 100
+              unit: percent
+          inputFingerprint: sha256:0000000000000000000000000000000000000000000000000000000000000000
+          triggerSource: HOURLY
+        isCurrent: true
+        evaluationError: null
+    CurrentRiskMember:
+      summary: Snapshot Member đã lọc; nhóm +24 giờ 133.33% kích hoạt R09, nhóm +48 giờ 100% không kích hoạt.
+      value:
+        snapshot: &riskSnapshotMember
+          id: 550e8400-e29b-41d4-a716-446655440051
+          taskId: 550e8400-e29b-41d4-a716-446655440103
+          riskLevel: HIGH
+          baseLevel: HIGH
+          evaluatedAt: '2026-11-14T03:00:00Z'
+          ruleVersion: '2.0.0'
+          triggeredRules: [R09]
+          evaluationCoverage: PARTIAL
+          notEvaluated:
+            - ruleId: R09
+              horizonAt: '2026-11-15T03:00:00Z'
+              subjectUserId: null
+              reasonCode: CAPACITY_NOT_APPROVED
+              message: Capacity chưa được duyệt.
+          evidence:
+            - id: ev-r09-a-subject
+              groupId: opaque-7f31
+              source: task
+              ruleId: R09
+              field: subjectUserId
+              value: 550e8400-e29b-41d4-a716-446655440003
+            - id: ev-r09-a-horizon
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: horizonAt
+              value: '2026-11-15T03:00:00Z'
+            - id: ev-r09-a-remaining-time
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: remainingContinuousHoursToDeadline
+              value: 24
+              unit: hours
+            - id: ev-r09-a-capacity
+              groupId: opaque-7f31
+              source: task
+              ruleId: R09
+              field: approvedWeeklyHours
+              value: 21
+              unit: hours
+            - id: ev-r09-a-available
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: availableHours
+              value: 3
+              unit: hours
+            - id: ev-r09-a-remaining
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: cumulativeRemainingHours
+              value: 4
+              unit: hours
+            - id: ev-r09-a-ratio
+              groupId: opaque-7f31
+              source: evaluation
+              ruleId: R09
+              field: workloadRatioPercent
+              value: 133.33
+              unit: percent
+            - id: ev-r09-b-subject
+              groupId: opaque-c209
+              source: task
+              ruleId: R09
+              field: subjectUserId
+              value: 550e8400-e29b-41d4-a716-446655440003
+            - id: ev-r09-b-horizon
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: horizonAt
+              value: '2026-11-16T03:00:00Z'
+            - id: ev-r09-b-remaining-time
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: remainingContinuousHoursToDeadline
+              value: 48
+              unit: hours
+            - id: ev-r09-b-capacity
+              groupId: opaque-c209
+              source: task
+              ruleId: R09
+              field: approvedWeeklyHours
+              value: 21
+              unit: hours
+            - id: ev-r09-b-available
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: availableHours
+              value: 6
+              unit: hours
+            - id: ev-r09-b-remaining
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: cumulativeRemainingHours
+              value: 6
+              unit: hours
+            - id: ev-r09-b-ratio
+              groupId: opaque-c209
+              source: evaluation
+              ruleId: R09
+              field: workloadRatioPercent
+              value: 100
+              unit: percent
+          inputFingerprint: sha256:0000000000000000000000000000000000000000000000000000000000000000
+          triggerSource: HOURLY
+        isCurrent: true
+        evaluationError: null
+    RiskHistoryManager:
+      summary: Lịch sử Manager; nhóm +24 giờ 133.33% kích hoạt R09, nhóm +48 giờ 100% không kích hoạt.
+      value:
+        page: 1
+        pageSize: 20
+        total: 1
+        items: [*riskSnapshotManager]
+    RiskHistoryMember:
+      summary: Lịch sử Member đã lọc; nhóm +24 giờ 133.33% kích hoạt R09, nhóm +48 giờ 100% không kích hoạt.
+      value:
+        page: 1
+        pageSize: 20
+        total: 1
+        items: [*riskSnapshotMember]

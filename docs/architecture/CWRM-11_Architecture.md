@@ -1,6 +1,6 @@
 # CWRM-11 — Kiến trúc hệ thống
 
-**Trạng thái:** bản thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). ADR kỹ thuật được Tech Lead chấp thuận ngày 11/11/2026; lần cập nhật này không sửa ADR-001.
+**Trạng thái:** bản thiết kế 0.3.1-draft cập nhật ngày 17/11/2026 theo review CWRM-18; nền thiết kế 0.3.0-draft lập ngày 14/11/2026 và đồng bộ theo Clarification FINAL-01..08 được PM duyệt ngày 15/11/2026. Nguồn nghiệp vụ là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026). ADR kỹ thuật được Tech Lead chấp thuận ngày 11/11/2026; lần cập nhật này không sửa ADR-001.
 
 ## 1. Ranh giới và cấu trúc triển khai
 
@@ -157,7 +157,7 @@ type RiskEvaluation = {
     reasonCode:
       | "CAPACITY_NOT_DECLARED" | "CAPACITY_NOT_APPROVED"
       | "CAPACITY_ZERO" | "REMAINING_EFFORT_MISSING";
-    message: string;
+    message: string; // Dựng theo mẫu từ reasonCode, không chứa tên, user ID, task ID hay nội dung nhận diện.
   }>;
   evidence: Array<{
     id: string;
@@ -166,6 +166,7 @@ type RiskEvaluation = {
     field: string;
     value: string | number | boolean | null;
     unit?: string;
+    groupId?: string | null;
   }>;
 };
 type RiskSnapshot = RiskEvaluation & {
@@ -179,6 +180,10 @@ type RiskSnapshot = RiskEvaluation & {
 Boost một lần từng rule MEDIUM hợp lệ khi priority HIGH/CRITICAL, deadline FIXED hoặc `affectedTaskCount >= 3`; R09/R13 không boost. Mức tổng là max sau boost; nếu đánh giá thành công và không rule nào kích hoạt thì LOW. Thiếu một phần dữ liệu tạo `evaluationCoverage=PARTIAL`, danh sách `notEvaluated` và vẫn giữ riskLevel từ rule đánh giá được. `isCurrent=false` có nghĩa snapshot stale; `evaluationError` báo lần đánh giá toàn engine thất bại. Lỗi toàn engine không tạo snapshot LOW giả và không đồng nghĩa PARTIAL.
 
 R09 gộp các task cùng deadline, tính tích lũy theo từng R: `availableHours = approvedWeeklyHours × remainingContinuousHoursToDeadline / 168`; so sánh tỷ lệ trên số thực trước khi làm tròn. Ngưỡng >100% đến 125% là MEDIUM, >125% là HIGH. Evidence ghi subjectUserId, horizonAt, capacity, remaining effort, availableHours, cumulativeRemainingHours, workloadRatioPercent và ngưỡng 100/125. Chỉ gắn evidence/cảnh báo vào task thuộc tập cộng dồn có remaining >0 tại mốc quá tải; nhiều mốc/R giữ mức cao nhất. Manager thấy đủ evidence; Member chỉ thấy workload của mình và task họ có quyền, dữ liệu task khác là tổng hợp không kèm tên/task ID.
+
+Với R09, các dòng evidence của cùng một R tại cùng một horizon dùng chung `groupId`, chuỗi opaque ổn định trong snapshot; client không suy nghĩa từ giá trị chuỗi. Cùng áp dụng cho snapshot hiện hành, history, alert và context gửi AI: Với MEMBER, evidence/gap về workload chỉ gồm dữ liệu của chính người gọi; phần của người khác chỉ còn số tổng hợp, không có user ID, task ID, tên hay nội dung nhận diện; Manager của workspace thấy đầy đủ.
+
+`remainingEffortHours = 0` là hợp lệ và không tạo gap; remaining effort null tạo `REMAINING_EFFORT_MISSING`, còn capacity chưa khai/chưa duyệt/bằng 0 tạo `CAPACITY_NOT_DECLARED`/`CAPACITY_NOT_APPROVED`/`CAPACITY_ZERO`. Các trường hợp này tạo snapshot `evaluationCoverage=PARTIAL` và các rule còn lại vẫn được đánh giá. `422 RISK_INPUT_INVALID` chỉ dành cho input bắt buộc thiếu hoặc sai miền như deadline/progress; lỗi toàn engine đặt `evaluationError` và không tạo snapshot LOW giả.
 
 R13 đếm liên tục trong đợt IN_PROGRESS hiện tại từ mốc muộn hơn giữa `currentInProgressSince` và `lastQualifyingActivityAt`. Hoạt động hợp lệ phải đổi giá trị thực và commit thành công: progress do R hoặc Manager, `isDone`, confirmation hoặc Work Update. Thay đổi progress thực của Manager cũng là `PROGRESS_CHANGED`; no-op không reset. Đúng 72h kích hoạt; 71:59:59 chưa. Rời IN_PROGRESS kết thúc đợt; quay lại từ REVIEW/BLOCKED mở đợt mới. Evidence có `currentInProgressSince`, `lastQualifyingActivityAt`, `elapsedHours`, ngưỡng 72 và `reason`; cảnh báo dùng câu “không có cập nhật công việc”. Comment, no-op và sửa effort không reset timer.
 
@@ -233,7 +238,7 @@ Chỉ TASK_ACCESS thấy task detail/checklist/comment/work-update. Với depend
 - Duyệt withdrawal không kết thúc trách nhiệm trước commit. Không cho duyệt rút R cuối nếu thiếu R Accepted thay thế; dùng replacement.
 - Tổng effortEstimateHours của R còn hiệu lực không được vượt Task estimate; khóa/serialize khi allocation đổi. `NULL` Task estimate bỏ qua kiểm tra.
 - Checklist/writing/confirmation update timer R13 chỉ khi có thay đổi thực. Work Update content kiểm trùng tác giả/task trước insert.
-- AI khóa thread khi bắt đầu một lượt; idempotency `clientMessageId` trả lại kết quả cũ khi SUCCESS. Quyền và context được kiểm trước/sau Gemini; output evidence phải tồn tại trong snapshot context.
+- AI khóa thread khi bắt đầu một lượt. Gửi lại cùng `clientMessageId` là replay đúng kết quả đã lưu, không gọi provider: SUCCESS trả 200 cũ; FAILED trả cùng lỗi 502/503 với cùng `messageId`. Chủ động thử lại sau FAILED phải dùng `clientMessageId` mới để gọi provider lại; lượt bị từ chối 403/409 sau provider không lưu gì nên cùng ID được xử lý như lượt mới. Sau khi provider trả về thành công hoặc lỗi, quyền và context được kiểm lại trước mọi nhánh lưu/trả; quyền mất trả 403, context đổi trả 409, không lưu tin nào và giải phóng processing. Nếu quyền/context còn nguyên, provider lỗi hoặc output sai lưu USER và ASSISTANT FAILED với errorCode; output hợp lệ phải qua kiểm dữ kiện và evidence refs trong snapshot context rồi lưu SUCCESS. Fallback chỉ dựng từ evidence snapshot hiện hành đã lọc theo người gọi, null nếu chưa có snapshot. Mọi nhánh sau khi khóa thread đều giải phóng processing.
 
 ### Thời gian, audit và lỗi
 
@@ -290,7 +295,7 @@ sequenceDiagram
 
 Checklist, confirmation và Work Update chỉ cập nhật đồng hồ khi đổi giá trị/thành công. Progress gửi trùng là no-op. R là chủ assignment còn hiệu lực resolve blocker của mình; mặc định kỹ thuật chờ PM xác nhận, Manager chỉ resolve blocker OPEN gắn với assignment đã kết thúc. Resolve blocker cuối không tự đổi Task status; Manager dùng `/unblock` để điều khiển trạng thái.
 
-### B. Một lượt AI Chat, quyền và context được kiểm tra hai lần
+### B. Một lượt AI Chat, quyền và context được kiểm tra sau provider trước mọi kết quả
 
 ```mermaid
 sequenceDiagram
@@ -312,33 +317,44 @@ sequenceDiagram
         API->>DB: Khóa thread, ghi trạng thái processing
         API->>DB: Đọc task, effort, blocker, predecessor metadata, risk và Work Update gần đây
         API->>API: Giới hạn 10 tin gần nhất, đánh dấu text không tin cậy
-        API->>PORT: Context mới và lịch sử giới hạn
+        API->>PORT: Context đã lọc theo caller và lịch sử giới hạn
         PORT->>GEMINI: Gọi Gemini phía server
-        alt Provider timeout/quota/lỗi hoặc output sai
-            GEMINI-->>PORT: Lỗi hoặc output không hợp lệ
-            PORT-->>API: AI_TIMEOUT / AI_QUOTA_EXCEEDED / AI_PROVIDER_ERROR / AI_OUTPUT_INVALID
-            API->>DB: Lưu USER và ASSISTANT FAILED, errorCode
-            API-->>UI: 502/503 + retryable/messageId/fallbackExplanation
-        else Có output
+        alt Provider trả lỗi
+            GEMINI-->>PORT: Timeout/quota/lỗi provider
+            PORT-->>API: AI_TIMEOUT / AI_QUOTA_EXCEEDED / AI_PROVIDER_ERROR
+        else Provider trả output
             GEMINI-->>PORT: Nội dung, evidence refs, suggestions
             PORT-->>API: Kết quả đã chuẩn hóa
-            API->>DB: Kiểm lại quyền và taskVersion/snapshot hiện hành
-            alt Quyền đã mất
-                API->>DB: Không lưu câu trả lời hợp lệ, giải phóng processing
-                API-->>UI: 403 FORBIDDEN
-            else Context quan trọng đã đổi
-                API->>DB: Không lưu câu trả lời hợp lệ, giải phóng processing
-                API-->>UI: 409 AI_CONTEXT_CHANGED
-            else Quyền và context còn nguyên
+        end
+        API->>DB: Kiểm lại quyền và taskVersion/snapshot hiện hành
+        alt Quyền đã mất
+            API->>DB: Không lưu tin nào của lượt, giải phóng processing
+            API-->>UI: 403 FORBIDDEN, không fallback
+        else Context quan trọng đã đổi
+            API->>DB: Không lưu tin nào của lượt, giải phóng processing
+            API-->>UI: 409 AI_CONTEXT_CHANGED, không fallback
+        else Quyền và context còn nguyên
+            alt Provider timeout/quota/lỗi
+                API->>DB: Lưu USER + ASSISTANT FAILED với errorCode
+                API->>DB: Giải phóng processing
+                API-->>UI: 502/503 + retryable/messageId/fallbackExplanation đã lọc
+            else Provider trả output
                 API->>API: Kiểm deadline/giờ/risk và evidence refs
-                API->>DB: Lưu USER + ASSISTANT SUCCESS, cập nhật expiresAt
-                API-->>UI: 200 { userMessage, assistantMessage, thread }
+                alt Output sai cấu trúc, dữ kiện hoặc evidence refs
+                    API->>DB: Lưu USER + ASSISTANT FAILED với errorCode AI_OUTPUT_INVALID
+                    API->>DB: Giải phóng processing
+                    API-->>UI: 502 AI_OUTPUT_INVALID + retryable/messageId/fallbackExplanation đã lọc
+                else Output hợp lệ
+                    API->>DB: Lưu USER + ASSISTANT SUCCESS, cập nhật expiresAt
+                    API->>DB: Giải phóng processing
+                    API-->>UI: 200 { userMessage, assistantMessage, thread }
+                end
             end
         end
     end
 ```
 
-Thread suy ra từ JWT + taskId; client không gửi threadId và không có API đọc thread theo userId. Context không có comment, secrets hoặc dữ liệu team khác. Mất quyền sau khi gọi Gemini trả 403; task/snapshot đổi trả 409; lỗi provider lưu tin FAILED trước response. Câu trả lời không ghi task/risk/assignment/deadline.
+Thread suy ra từ JWT + taskId; client không gửi threadId và không có API đọc thread theo userId. Context không có comment, secrets hoặc dữ liệu team khác. Mọi response sau khi provider trả về chỉ được chọn sau khi kiểm lại quyền và taskVersion/snapshot hiện hành. Quyền mất trả 403, context đổi trả 409; hai nhánh này không lưu USER hay ASSISTANT và không trả fallback. Khi quyền/context còn nguyên, lỗi provider hoặc output sai lưu cặp USER và ASSISTANT FAILED cùng errorCode trước 502/503; tin ASSISTANT luôn có status SUCCESS hoặc FAILED, tin USER có status null, tin FAILED có errorCode. `fallbackExplanation` chỉ dựng từ evidence của snapshot hiện hành đã lọc theo người gọi và là null khi chưa có snapshot. Cùng `clientMessageId` replay nguyên kết quả đã lưu, gồm cùng response 502/503 và `messageId` nếu FAILED; retry chủ động dùng ID mới. Lượt bị từ chối 403/409 không lưu nên cùng ID được xử lý như lượt mới. Mọi nhánh sau khi khóa thread đều giải phóng processing. Câu trả lời không ghi task/risk/assignment/deadline.
 
 ## 8. Câu hỏi mở
 
@@ -353,7 +369,7 @@ Ngoại lệ Manager đóng blocker OPEN sau khi assignment kết thúc đang đ
 
 ## 10. Đối chiếu acceptance criteria Scope v0.2
 
-Đây là đối chiếu thiết kế giữa AC và contract 0.3.0-draft; chưa phải bằng chứng chạy thực, kiểm thử, nghiệm thu hay đo hiệu năng.
+Đây là đối chiếu thiết kế giữa AC và contract 0.3.1-draft; chưa phải bằng chứng chạy thực, kiểm thử, nghiệm thu hay đo hiệu năng.
 
 | AC | Endpoint/bảng/quy tắc chính trong contract |
 |---|---|

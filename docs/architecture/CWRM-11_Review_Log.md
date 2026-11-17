@@ -150,22 +150,22 @@ Nguồn cập nhật là Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-
 
 ### Điểm cần review trên 0.3.0-draft
 
-Mọi trạng thái dưới đây là **CHƯA CÓ PHẢN HỒI**; không ghi nhận phản hồi thay Hiệp, Ban hoặc Bảo.
+Trạng thái dưới đây ghi nhận phản hồi Jira ngày 17/11/2026. Các điểm cần Hiệp chốt và ngoại lệ Manager đóng blocker của assignment đã kết thúc chờ Lê Đình Bảo được giữ nguyên trạng thái chờ.
 
 | Người review | Câu hỏi cụ thể | Trạng thái |
 |---|---|---|
-| Đặng Văn Hiệp | `Task.responsibleUsers[]` có đủ `assignmentId`, `taskRoleName`, `confirmedAt`, `effortEstimateHours`, `remainingEffortHours` để dựng màn Task/Review mà không gọi N+1 không? | CHƯA CÓ PHẢN HỒI |
-| Đặng Văn Hiệp | `Task.openWork.state` cùng `openWorkState` filter có đủ phân biệt NOT_OPENED/OPEN/TEMPORARILY_FULL/CLOSED cho UI không? | CHƯA CÓ PHẢN HỒI |
-| Đặng Văn Hiệp | Metadata `predecessors[]` gồm team/title/status/dependencyWarning có đủ hiển thị dependency khác Team không cần gọi API predecessor không? | CHƯA CÓ PHẢN HỒI |
-| Đặng Văn Hiệp | Alert per-task kèm `type`, `groupKey`, `resolvedAt` và lọc `resolved` có đủ để gộp trên UI mà vẫn giữ ACL không? | CHƯA CÓ PHẢN HỒI |
-| Lê Quốc Ban | Evidence R09 theo horizon và bộ `reasonCode` có đủ kiểm fixture missing capacity/effort và lọc dữ liệu liên Team không? | CHƯA CÓ PHẢN HỒI |
-| Lê Quốc Ban | Các trường timer/activity và `ruleVersion=2.0.0` có đủ kiểm boundary/no-op/đợt IN_PROGRESS cho R13 không? | CHƯA CÓ PHẢN HỒI |
-| Lê Quốc Ban | `AIMessage` cùng fallback `details.retryable/messageId/fallbackExplanation` có đủ biểu diễn SUCCESS/FAILED và ca thử lại không? | CHƯA CÓ PHẢN HỒI |
-| Đặng Văn Hiệp | `Task.availableActions` có thể hiển thị START và UPDATE_PROGRESS cho Manager ACTIVE khi đủ state guard không? | CHƯA CÓ PHẢN HỒI |
-| Đặng Văn Hiệp | UI có thể cho Decline DIRECT/REPLACEMENT không cần reason, đồng thời gửi reason không rỗng nếu người dùng tự nhập không? | CHƯA CÓ PHẢN HỒI |
-| Lê Quốc Ban | Bộ expected test có đủ kiểm tra quyền Start/progress của Manager và R cùng ngoại lệ resolve blocker chỉ sau khi assignment kết thúc không? | CHƯA CÓ PHẢN HỒI |
+| Đặng Văn Hiệp | `Task.responsibleUsers[]` có đủ `assignmentId`, `taskRoleName`, `confirmedAt`, `effortEstimateHours`, `remainingEffortHours` để dựng màn Task/Review mà không gọi N+1 không? | CẦN XÁC NHẬN (17/11) — Khôi trả lời mảng chỉ gồm R hiện hành; Direct đang chờ và assignment đã kết thúc lấy ở `/tasks/{taskId}/assignments`; chờ Hiệp chốt. |
+| Đặng Văn Hiệp | `Task.openWork.state` cùng `openWorkState` filter có đủ phân biệt NOT_OPENED/OPEN/TEMPORARILY_FULL/CLOSED cho UI không? | CẦN XÁC NHẬN (17/11) — Khôi đã trả lời bằng state, eligibility và mã lỗi; chờ Hiệp chốt. |
+| Đặng Văn Hiệp | Metadata `predecessors[]` gồm team/title/status/dependencyWarning có đủ hiển thị dependency khác Team không cần gọi API predecessor không? | CẦN XÁC NHẬN (17/11) — Khôi đã trả lời; chờ Hiệp chốt. |
+| Đặng Văn Hiệp | Alert per-task kèm `type`, `groupKey`, `resolvedAt` và lọc `resolved` có đủ để gộp trên UI mà vẫn giữ ACL không? | CẦN XÁC NHẬN (17/11) — Khôi đã trả lời; chờ Hiệp chốt. |
+| Lê Quốc Ban | Evidence R09 theo horizon và bộ `reasonCode` có đủ kiểm fixture missing capacity/effort và lọc dữ liệu liên Team không? | CẦN ĐIỀU CHỈNH (17/11) — Công thức khớp; thiếu khóa nhóm evidence và quy tắc lọc cho history/alert/AI; đã sửa ở 0.3.1-draft. |
+| Lê Quốc Ban | Các trường timer/activity và `ruleVersion=2.0.0` có đủ kiểm boundary/no-op/đợt IN_PROGRESS cho R13 không? | ĐỒNG Ý (17/11) — Đề nghị đổi tên reason; đã đổi. |
+| Lê Quốc Ban | `AIMessage` cùng fallback `details.retryable/messageId/fallbackExplanation` có đủ biểu diễn SUCCESS/FAILED và ca thử lại không? | CẦN ĐIỀU CHỈNH (17/11) — Recheck trước fallback, shape FAILED và replay/retry; đã sửa ở 0.3.1-draft. |
+| Đặng Văn Hiệp | `Task.availableActions` có thể hiển thị START và UPDATE_PROGRESS cho Manager ACTIVE khi đủ state guard không? | ĐỒNG Ý DÙNG LÀM NGUỒN QUYẾT ĐỊNH (17/11) — Hiệp đề nghị làm rõ phạm vi áp dụng và mã lỗi; đã bổ sung mô tả. |
+| Đặng Văn Hiệp | UI có thể cho Decline DIRECT/REPLACEMENT không cần reason, đồng thời gửi reason không rỗng nếu người dùng tự nhập không? | ĐỒNG Ý (17/11) — Yêu cầu schema thể hiện optional và không gửi chuỗi rỗng; schema đã đúng, bổ sung mô tả. |
+| Lê Quốc Ban | Bộ expected test có đủ kiểm tra quyền Start/progress của Manager và R cùng ngoại lệ resolve blocker chỉ sau khi assignment kết thúc không? | ĐỒNG Ý (17/11) cho Start/progress; nhánh Manager đóng blocker của assignment đã kết thúc chờ Bảo. |
 | Lê Đình Bảo (PM) | Xác nhận phương án mặc định kỹ thuật: Manager ACTIVE chỉ resolve blocker OPEN khi assignment gắn vào đã kết thúc, bắt buộc reason và audit; Manager không resolve blocker của R còn hiệu lực? | CHƯA CÓ PHẢN HỒI |
-| Lê Quốc Ban | Danh mục `/risk-rules` có đủ tên, baseLevel, boostable và mô tả để dùng làm nguồn rule catalog/fixture không? | CHƯA CÓ PHẢN HỒI |
+| Lê Quốc Ban | Danh mục `/risk-rules` có đủ tên, baseLevel, boostable và mô tả để dùng làm nguồn rule catalog/fixture không? | ĐỒNG Ý (17/11) |
 
 ### Thay đổi ở 0.3.0-draft
 
@@ -200,3 +200,36 @@ Mọi trạng thái dưới đây là **CHƯA CÓ PHẢN HỒI**; không ghi nh�
 | FINAL-07 | Điều chỉnh các contract location `startTask`/`createProgressUpdate`, milestone same-Team và NQ05 theo AC; các guard invitation, Manager cuối, R03 và early dependency đã được rà soát. |
 | FINAL-08 | Không tác động contract. |
 | Charter v1.0 | Architecture mục 2 gắn Task history/audit với module `audit`, Comments S08 với `progress`, Khôi là owner API/DB; mỗi phần có issue/AC riêng khi phân rã, chưa tạo issue. |
+
+## Phản hồi review 0.3.0-draft (17/11/2026)
+
+### Lê Quốc Ban — Risk/AI/QA (Jira CWRM-18, comment 10085)
+
+- **R09 evidence/ACL:** công thức khớp; yêu cầu bổ sung khóa nhóm evidence và ghi quy tắc lọc cho history, alert, AI.
+- **R13:** đồng ý hướng timer/activity và đề nghị đổi reason sang `NO_QUALIFYING_ACTIVITY`.
+- **AI khi provider lỗi:** yêu cầu recheck quyền/context trước fallback, làm rõ shape `AIMessage` FAILED và quy tắc replay/retry.
+- **Expected test:** đồng ý các ca quyền Start/progress; nhánh Manager đóng blocker OPEN của assignment đã kết thúc vẫn chờ Bảo.
+- **`/risk-rules`:** đồng ý dùng danh mục làm nguồn rule catalog/fixture.
+
+### Đặng Văn Hiệp — Frontend (Jira CWRM-18, comment 10090)
+
+- **`Task.responsibleUsers[]`:** Khôi trả lời mảng chỉ gồm R hiện hành; Direct đang chờ và assignment đã kết thúc lấy ở `/tasks/{taskId}/assignments`; chờ Hiệp chốt.
+- **`Task.openWork.state`:** Khôi đã trả lời bằng state, eligibility và mã lỗi; chờ Hiệp chốt.
+- **`predecessors[]`:** Khôi đã trả lời; chờ Hiệp chốt.
+- **Alert:** Khôi đã trả lời; chờ Hiệp chốt.
+- **`availableActions` cho Manager:** đồng ý dùng làm nguồn quyết định; Hiệp đề nghị làm rõ phạm vi áp dụng và mã lỗi, đã bổ sung mô tả.
+- **Decline không cần reason:** đồng ý; yêu cầu schema thể hiện reason tùy chọn và không gửi chuỗi rỗng; schema đã đúng, bổ sung mô tả.
+
+Các phép tính của Ban là review tài liệu; các ca backend NOT RUN. Kết luận QA của Ban: đủ để tiếp tục thiết kế ca R13, catalog, Start/progress; chưa khóa assertion R09 ACL, AI hậu kiểm và nhánh resolve blocker của assignment đã kết thúc.
+
+## Thay đổi ở 0.3.1-draft
+
+Đây là thay đổi bổ sung, không phá vỡ so với 0.3.0-draft: thêm trường tùy chọn `groupId`, đổi một giá trị trong ví dụ, làm rõ mô tả và luồng.
+
+| Thay đổi contract | Nguồn |
+|---|---|
+| **A — Phiên bản:** nâng contract và phần Trạng thái/Nguồn của Architecture/ERD lên `0.3.1-draft`; `ruleVersion` giữ `2.0.0`. | Ban, CWRM-18 comment 10085, mục 1–3; Hiệp, CWRM-18 comment 10090, điểm 1–6 |
+| **B — R09 và ACL:** thêm `RiskEvidence.groupId` và ví dụ hai horizon; làm rõ `RiskEvaluationGap.message`, quy tắc lọc MEMBER/MANAGER cho snapshot hiện hành, history, alert và context AI; bổ sung cặp ví dụ Manager/Member và ranh giới gap với `RISK_INPUT_INVALID`. | Ban, CWRM-18 comment 10085, mục 1 |
+| **C — R13:** đổi giá trị reason trong ví dụ thành `NO_QUALIFYING_ACTIVITY`. | Ban, CWRM-18 comment 10085, mục 2 |
+| **D — AI:** recheck sau provider trước lưu/trả, định nghĩa fallback đã lọc, status/errorCode của tin, replay cùng ID và retry bằng ID mới; ERD giữ unique constraint và ghi chú cách xử lý. | Ban, CWRM-18 comment 10085, mục 3 |
+| **E — Frontend:** làm rõ phạm vi `Task.responsibleUsers`, `Task.availableActions` và `AssignmentResponseRequest.reason` khi DECLINED. | Hiệp, CWRM-18 comment 10090, điểm 1, 5–6 |
