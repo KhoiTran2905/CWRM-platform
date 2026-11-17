@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('CWRM API')
-    .setVersion('0.1.0-draft')
+    .setVersion('0.3.3-draft')
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
