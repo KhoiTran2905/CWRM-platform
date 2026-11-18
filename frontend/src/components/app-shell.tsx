@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useAppContext } from "@/components/app-context";
 
 interface NavItem {
   href: string;
@@ -39,6 +40,7 @@ function resolveScreenInfo(pathname: string): { screen: string; team: string } {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { account, workspace } = useAppContext();
   const { screen, team } = resolveScreenInfo(pathname);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -66,10 +68,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    router.replace("/login");
+    router.refresh();
+  }
+
   return (
     <div className="app-frame">
       <aside className="sidebar">
-        <Link href="/manager" className="brand" aria-label="CWRM, về trang tổng quan điều hành">
+        <Link href="/workspace" className="brand" aria-label="CWRM, về Workspace">
           <span className="brand-mark">
             C<span className="brand-mark-dot" />
           </span>
@@ -78,19 +86,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             <small>Hệ thống Điều hành</small>
           </span>
         </Link>
-        <div className="workspace-chip">
+        <Link href="/workspaces" className="workspace-chip" title="Đổi Workspace">
           <span className="workspace-dot" />
           <span>
-            <small>WORKSPACE ĐIỀU HÀNH</small>
-            <strong>CWRM Enterprise Core</strong>
+            <small>WORKSPACE HIỆN TẠI</small>
+            <strong>{workspace?.name ?? "Chưa chọn Workspace"}</strong>
           </span>
           <span className="workspace-caret" aria-hidden="true">⌄</span>
-        </div>
+        </Link>
         <nav aria-label="Điều hướng chính">
           {(["Manager", "Member"] as const).map((group) => (
             <div className="nav-group" key={group}>
               <p className="nav-group-label">
-                {group === "Manager" ? "ĐIỀU HÀNH DỰ ÁN" : "TÁC NGHIỆP TRỰC TIẾP"} <span>{group}</span>
+                {group === "Manager" ? "ĐIỀU HÀNH DỰ ÁN" : "TÁC NGHIỆP TRỰC TIẾP"} <span>Demo</span>
               </p>
               {navigation
                 .filter((item) => item.group === group)
@@ -116,8 +124,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="sidebar-note">
-          <strong>Môi trường Điều hành</strong>
-          <span>Phân quyền thực thi cấp dự án. Đồng bộ trạng thái tức thời.</span>
+          <strong>Giao diện minh họa</strong>
+          <span>Chỉ Auth và Workspace đã kết nối API. Task, Review và Risk chưa có API nghiệp vụ.</span>
         </div>
       </aside>
       <div className="app-main">
@@ -126,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <nav aria-label="Điều hướng phân cấp" className="breadcrumbs">
               <ol className="breadcrumb-list">
                 <li className="breadcrumb-item">
-                  <Link href="/manager" className="breadcrumb-link">
+                  <Link href="/workspace" className="breadcrumb-link">
                     Không gian CWRM
                   </Link>
                 </li>
@@ -164,10 +172,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
               <kbd className="topbar-search-kbd font-mono tabular-nums" title="Nhấn Ctrl+K để tìm">Ctrl+K</kbd>
             </form>
-            <Link
-              href="/login"
+            <span
               className="user-profile-chip"
-              title="Đổi vai trò hoặc đăng xuất tại /login"
+              title={account.email}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -195,21 +202,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                   fontWeight: 800,
                 }}
               >
-                {pathname.startsWith("/my-work") || pathname.startsWith("/open-work") ? "M" : "A"}
+                {account.displayName.charAt(0).toUpperCase()}
               </span>
-              <span>
-                {pathname.startsWith("/my-work") || pathname.startsWith("/open-work")
-                  ? "Nguyễn Bình (Member)"
-                  : "Lê Đình Bảo (Manager)"}
-              </span>
-            </Link>
-            <span className="demo-pill">
-              <span className="demo-pill-dot" /> Trực tuyến
+              <span>{account.displayName}</span>
             </span>
+            <button type="button" className="button button-secondary" onClick={handleLogout}>Đăng xuất</button>
             <ThemeToggle />
           </div>
         </header>
-        <main className="page-content">{children}</main>
+        <main className="page-content">{pathname !== "/workspace" && <p className="demo-banner" role="note">Giao diện Task/Review/Risk đang dùng dữ liệu minh họa. Thao tác ở các màn này chưa ghi vào API.</p>}{children}</main>
       </div>
     </div>
   );
