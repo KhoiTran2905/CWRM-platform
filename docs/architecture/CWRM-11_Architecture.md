@@ -369,7 +369,7 @@ Ngoại lệ đóng blocker OPEN sau khi assignment kết thúc đã được PM
 
 ## 10. Đối chiếu acceptance criteria Scope v0.2
 
-Đây là đối chiếu thiết kế giữa AC và contract 0.3.3-draft; chưa phải bằng chứng chạy thực, kiểm thử, nghiệm thu hay đo hiệu năng.
+Đây là đối chiếu thiết kế giữa AC01–AC14 và contract 0.3.3-draft; chưa phải bằng chứng chạy thực, kiểm thử, nghiệm thu hay đo hiệu năng. AC01–AC13 ánh xạ vào endpoint, bảng hoặc quy tắc; AC14 là tiêu chí nghiệm thu tổng thể của sản phẩm, ghi ở dòng cuối để đủ truy vết.
 
 | AC | Endpoint/bảng/quy tắc chính trong contract |
 |---|---|
@@ -386,6 +386,7 @@ Ngoại lệ đóng blocker OPEN sau khi assignment kết thúc đã được PM
 | AC11 | AI access/context recheck, evidence validation and fallback; `AI_CONTEXT_UNAVAILABLE`, `AI_CONTEXT_CHANGED`, `AI_TURN_IN_PROGRESS`, provider 502/503 errors. |
 | AC12 | Manager dùng assignment/deadline/dependency, `/block`, `/unblock` và intervention theo quyền; không trực tiếp resolve blocker cá nhân của R còn hiệu lực. Audit before/after/reason; AI không ghi dữ liệu nghiệp vụ. |
 | AC13 | Contract nêu NQ01–NQ09 controls, ACL, concurrency, coverage, stale/error, audit và paging; test/đo thực tế chưa được xác lập trong tài liệu này. |
+| AC14 | Không ánh xạ vào endpoint hay bảng. AC14 là tiêu chí nghiệm thu tổng thể DEL01–DEL06 (tài liệu Scope/Charter/Backlog, thiết kế, web app chạy thật, test/UAT, seed/runbook, kịch bản demo, tiểu luận). Contract này chỉ là một phần đầu vào "thiết kế" của DEL; việc triển khai và chứng minh chạy thực **không thuộc phạm vi nghiệm thu CWRM-18** mà thuộc các WP triển khai, kiểm thử và bàn giao sau. |
 
 ## Nguồn
 

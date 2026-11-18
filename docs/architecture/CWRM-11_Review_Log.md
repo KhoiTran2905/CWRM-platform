@@ -40,6 +40,8 @@ Ghi nhận các câu hỏi thiết kế cần Frontend (Đặng Văn Hiệp) và
 
 Các ghi nhận mô tả đúng tài liệu đã đọc, không kết luận người viết nháp sai; Scope v0.1 và các quyết định D1–D6 trong task CWRM-11 là cơ sở contract ưu tiên.
 
+> **Ghi chú lịch sử (18/11/2026, theo PM review CWRM-18 comment 10127):** câu trên chỉ đúng ở thời điểm 0.1.0-draft (11/11/2026). Từ 0.3.0-draft, baseline nghiệp vụ hiện hành là **Scope v0.2 Final kèm Clarification FINAL-01..08** (PM duyệt 14–15/11/2026) và các quyết định PM sau đó (PM-03). Scope v0.1 và D1–D6 chỉ còn dùng để đối chiếu thay đổi, không phải nguồn yêu cầu hiện hành.
+
 ## Phản hồi của Hiệp (11/11/2026)
 
 Nguồn: comment của Hiệp trên Jira CWRM-11 lúc 23:32 ngày 11/11/2026, trả lời 8 câu hỏi ở mục “Câu hỏi gửi Hiệp — Frontend” và nêu ý kiến về ba điểm khác.
@@ -302,3 +304,13 @@ Khi bắt đầu CWRM-24 (Auth Core & Workspace Bootstrap API), hai chỗ contra
 | `RegisterRequest.password`: ít nhất 8 ký tự, tối đa 72 byte UTF-8, không trim; vi phạm trả 400 `VALIDATION_ERROR`. | 0.3.2-draft không có giới hạn. bcrypt (ADR-001) chỉ dùng 72 byte đầu, nên không giới hạn thì hai mật khẩu chung 72 byte đầu đều đăng nhập được. |
 | `LoginRequest.password`: không áp tối thiểu; mật khẩu trên 72 byte trả 401 như sai mật khẩu. | Không cho phần vượt 72 byte bị bcrypt cắt ngầm khi so khớp. |
 | `WORKSPACE_MEMBER`/`WORKSPACE_MANAGER`, `getWorkspace`, `updateWorkspace`: người không có membership ACTIVE (kể cả INACTIVE) nhận 404 `NOT_FOUND`, cùng body với workspace không tồn tại; Member ACTIVE gọi thao tác chỉ Manager được làm nhận 403 `FORBIDDEN`. | Trả lời câu hỏi 403/404 của Ban ở CWRM-31; thống nhất với cách contract xử lý task khác Team (404, không lộ ID). |
+
+## Hoàn thiện theo PM review CWRM-18 (18/11/2026)
+
+Bảo (PM/BA) review 0.3.3-draft ở Jira CWRM-18 comment 10127: đạt về nội dung cả bốn AC, yêu cầu hoàn thiện ba việc trước khi nghiệm thu. Các sửa dưới đây chỉ là diễn đạt, truy vết và minh chứng; `info.version` giữ `0.3.3-draft`, không đổi endpoint, schema, mã lỗi, bảng hay cột, nên không cần Ban và Hiệp review lại.
+
+| Yêu cầu của PM | Cách xử lý |
+|---|---|
+| Câu về Scope v0.1/D1–D6 ở mục "Điểm contract khác bản nháp hiện có" dễ gây hiểu lầm | Giữ nguyên câu lịch sử, thêm ghi chú ngay dưới: baseline hiện hành là Scope v0.2 Final + FINAL-01..08; Scope v0.1 chỉ để đối chiếu. |
+| Architecture mục 10 thiếu AC14 | Thêm dòng AC14 và ghi rõ AC14 là tiêu chí nghiệm thu tổng thể DEL01–DEL06, không thuộc phần CWRM-18 phải triển khai hay chứng minh chạy thật. |
+| Minh chứng `redocly lint` và render Mermaid | Chạy lại trên commit hoàn thiện; log lint và ảnh render 7 sơ đồ đính kèm Jira CWRM-18 cùng commit. |
