@@ -48,9 +48,9 @@ async function seed(): Promise<void> {
   }
   const costValue = process.env.BCRYPT_COST?.trim() || '10';
   const cost = Number(costValue);
-  if (!Number.isInteger(cost) || cost < 4 || cost > 31) {
+  if (!Number.isInteger(cost) || cost < 4 || cost > 15) {
     throw new SeedConfigurationError(
-      'Biến môi trường BCRYPT_COST phải là số nguyên từ 4 đến 31.',
+      'Biến môi trường BCRYPT_COST phải là số nguyên từ 4 đến 15.',
     );
   }
 

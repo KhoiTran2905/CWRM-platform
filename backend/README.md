@@ -64,7 +64,7 @@ Health thực hiện truy vấn `SELECT 1` để xác nhận kết nối Postgre
 | `npm run db:deploy` | Áp dụng các migration đã có |
 | `npm run db:seed` | Tạo hoặc cập nhật dữ liệu demo |
 
-Chạy test bằng `npm test` và `npm run test:e2e`. Các bài e2e thay `PrismaService` bằng stub nên không kết nối database.
+Chạy unit test bằng `npm test` và e2e không cần database bằng `npm run test:e2e`. Test tích hợp dùng PostgreSQL thật qua `npm run test:int`; cần khởi động Docker bằng `npm run db:up` và cấu hình `TEST_DATABASE_URL` trỏ tới database riêng có tên kết thúc bằng `_test`. Bộ test tạo database nếu chưa có, áp dụng migration và xóa các bảng dữ liệu của database đó trước từng test.
 
 ## Tài khoản demo
 
@@ -93,7 +93,9 @@ npm run db:seed
 
 Sao chép `.env.example` thành `.env` rồi điều chỉnh các giá trị cho máy cá nhân. Các giá trị mẫu trong file chỉ phục vụ phát triển cục bộ. Nếu đổi `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` hoặc `POSTGRES_PORT`, hãy cập nhật `DATABASE_URL` tương ứng.
 
-`DATABASE_URL` bắt buộc. `PORT` mặc định là `3001`, `CORS_ORIGIN` mặc định là `http://localhost:3000`, và `NODE_ENV` mặc định là `development`. `CORS_ORIGIN` nhận nhiều origin, phân tách bằng dấu phẩy. Mật khẩu demo bắt buộc khi chạy seed; `BCRYPT_COST` mặc định là `10`.
+`DATABASE_URL` và `JWT_SECRET` bắt buộc. `JWT_SECRET` sau khi bỏ khoảng trắng hai đầu phải dài ít nhất 32 ký tự; giá trị mẫu trong `.env.example` chỉ dùng trên máy cá nhân. `JWT_EXPIRES_IN_SECONDS` mặc định là `3600` và nhận số nguyên từ `60` đến `86400`. `BCRYPT_COST` mặc định là `10` và nhận số nguyên từ `4` đến `15`. `PORT` mặc định là `3001`, `CORS_ORIGIN` mặc định là `http://localhost:3000`, và `NODE_ENV` mặc định là `development`. `CORS_ORIGIN` nhận nhiều origin, phân tách bằng dấu phẩy. Mật khẩu demo bắt buộc khi chạy seed.
+
+`TEST_DATABASE_URL` chỉ dùng cho `npm run test:int`. Database trong URL này phải riêng cho kiểm thử và tên phải kết thúc bằng `_test`; ví dụ trong `.env.example` trỏ tới `cwrm_test` trên cổng `5433`.
 
 ## Cấu trúc thư mục
 
@@ -119,7 +121,20 @@ backend/
 
 ## Phạm vi hiện tại
 
-Backend hiện có khung NestJS, kiểm tra cấu hình, Prisma, health API, Swagger, xử lý lỗi, migration và seed. Schema gồm 14 bảng thuộc S01–S03: tài khoản, workspace, thành viên workspace, lời mời, team, thành viên team, role, skill, role/skill của thành viên, milestone, task và yêu cầu role/skill của task. Chưa triển khai nghiệp vụ đăng ký, đăng nhập, CRUD task, phân công, risk hoặc AI.
+Backend hiện có đăng ký, đăng nhập, đăng xuất, đọc/cập nhật tài khoản hiện tại, tạo/liệt kê/đọc/cập nhật workspace, health API, Swagger, xử lý lỗi, migration và seed. Mọi route đều cần Bearer token trừ `GET /api/v1/health`, `POST /api/v1/auth/register` và `POST /api/v1/auth/login`. Workspace chỉ cho phép thành viên ACTIVE; đổi tên yêu cầu vai trò MANAGER. Chưa triển khai members, invitations, team, CRUD task, phân công, risk hoặc AI.
+
+Các endpoint đã có:
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+- `PATCH /api/v1/auth/me`
+- `GET /api/v1/workspaces`
+- `POST /api/v1/workspaces`
+- `GET /api/v1/workspaces/{workspaceId}`
+- `PATCH /api/v1/workspaces/{workspaceId}`
+- `GET /api/v1/health`
 
 Thiết kế gốc nằm trong tài liệu CWRM-11: ERD ở `docs/architecture/CWRM-11_ERD.md`, hợp đồng API ở `docs/api/openapi.yaml`, quyết định công nghệ ở `docs/architecture/adr/ADR-001-tech-stack.md`. Khi mã và các tài liệu này khác nhau thì phải nêu ra để thống nhất, không tự sửa một bên.
 

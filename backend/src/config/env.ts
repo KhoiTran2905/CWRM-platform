@@ -3,6 +3,9 @@ export interface AppEnv {
   port: number;
   corsOrigins: string[];
   nodeEnv: 'development' | 'test' | 'production';
+  jwtSecret: string;
+  jwtExpiresInSeconds: number;
+  bcryptCost: number;
 }
 
 /** Lỗi cấu hình môi trường; thông báo luôn nêu tên biến cần sửa. */
@@ -58,12 +61,62 @@ export function validateEnv(env: NodeJS.ProcessEnv): AppEnv {
     );
   }
 
+  const jwtSecret = env.JWT_SECRET?.trim();
+  if (!jwtSecret) {
+    throw new EnvValidationError('Thiếu biến môi trường bắt buộc: JWT_SECRET.');
+  }
+  if (Array.from(jwtSecret).length < 32) {
+    throw new EnvValidationError(
+      'Biến môi trường JWT_SECRET phải có ít nhất 32 ký tự sau khi bỏ khoảng trắng hai đầu.',
+    );
+  }
+
+  const jwtExpiresInSeconds = parseIntegerSetting(
+    env.JWT_EXPIRES_IN_SECONDS,
+    '3600',
+    'JWT_EXPIRES_IN_SECONDS',
+    60,
+    86400,
+  );
+  const bcryptCost = parseIntegerSetting(
+    env.BCRYPT_COST,
+    '10',
+    'BCRYPT_COST',
+    4,
+    15,
+  );
+
   return {
     databaseUrl,
     port,
     corsOrigins,
     nodeEnv: nodeEnv as AppEnv['nodeEnv'],
+    jwtSecret,
+    jwtExpiresInSeconds,
+    bcryptCost,
   };
+}
+
+function parseIntegerSetting(
+  value: string | undefined,
+  defaultValue: string,
+  name: string,
+  minimum: number,
+  maximum: number,
+): number {
+  const setting = value?.trim() || defaultValue;
+  if (!/^\d+$/.test(setting)) {
+    throw new EnvValidationError(
+      `Biến môi trường ${name} phải là số nguyên từ ${minimum} đến ${maximum}.`,
+    );
+  }
+  const parsed = Number(setting);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw new EnvValidationError(
+      `Biến môi trường ${name} phải là số nguyên từ ${minimum} đến ${maximum}.`,
+    );
+  }
+  return parsed;
 }
 
 function isOrigin(value: string): boolean {

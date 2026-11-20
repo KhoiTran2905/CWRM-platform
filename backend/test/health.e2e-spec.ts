@@ -12,6 +12,10 @@ describe('Health API (e2e)', () => {
   const prismaStub = { $queryRaw: vi.fn() };
 
   beforeEach(async () => {
+    process.env.DATABASE_URL = 'postgresql://localhost/cwrm_test';
+    process.env.JWT_SECRET = 'cwrm-health-e2e-secret-for-local-test-only';
+    process.env.JWT_EXPIRES_IN_SECONDS = '3600';
+    process.env.BCRYPT_COST = '4';
     prismaStub.$queryRaw.mockReset().mockResolvedValue([]);
     const moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
@@ -23,7 +27,11 @@ describe('Health API (e2e)', () => {
     app = moduleFixture.createNestApplication();
     configureApp(
       app,
-      validateEnv({ DATABASE_URL: 'postgresql://localhost/cwrm_test' }),
+      validateEnv({
+        ...process.env,
+        DATABASE_URL: 'postgresql://localhost/cwrm_test',
+        JWT_SECRET: process.env.JWT_SECRET,
+      }),
     );
     await app.init();
     registerNotFoundFallback(app);
