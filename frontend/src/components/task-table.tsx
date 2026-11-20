@@ -58,9 +58,12 @@ export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
       <style>{`
         .tt-table { min-width: 940px; }
         .tt-table thead th { padding: 10px 12px; font-size: 10.5px; }
-        .tt-table tbody tr.tt-row td { height: 44px; padding: 3px 12px; vertical-align: middle; }
+        .tt-table tbody tr.tt-row td { height: 44px; padding: 4px 12px; vertical-align: middle; transition: background .12s ease; }
+        .tt-table tbody tr.tt-row:hover td { background: var(--accent-soft); }
+        .tt-table tbody tr.tt-row:focus-within td { background: var(--accent-soft); }
         .tt-cell-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-        .tt-table .table-title { font-size: 12.5px; line-height: 1.2; }
+        .tt-table .table-title { font-size: 13px; font-weight: 650; line-height: 1.25; }
+        .tt-table .table-title:hover { color: var(--primary); text-decoration: underline; }
         .tt-table .table-subtitle { display: flex; align-items: center; gap: 6px; margin-top: 0; font-size: 10px; line-height: 1.2; }
         .tt-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-numeric: tabular-nums; font-size: 10px; font-weight: 700; letter-spacing: .02em; color: var(--faint); }
         .tt-avatar-stack { display: inline-flex; align-items: center; padding-left: 1px; }
