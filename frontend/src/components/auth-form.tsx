@@ -71,61 +71,40 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
   }
 
   return (
-    <main className="login-page">
-      <div className="login-theme-toggle">
+    <main className="auth-container">
+      <div className="auth-theme-toggle">
         <ThemeToggle />
       </div>
 
-      <div className="login-intro">
-        <div className="login-logo-lockup">
-          <span className="login-mark" aria-hidden="true">C</span>
-          <span className="login-brand-name">CWRM Platform</span>
+      <div className="auth-card-wrapper">
+        <div className="auth-brand-header">
+          <div className="auth-brand-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <h1>CWRM Platform</h1>
+          <p>Hệ thống Điều hành Dự án theo chuẩn RACI & Giám sát Rủi ro AI</p>
         </div>
-        <h1>Công việc rõ người, rủi ro rõ bằng chứng.</h1>
-        <p className="login-intro-lead">
-          Nền tảng điều hành dự án phần mềm theo chuẩn RACI, quản lý hàng đợi nhận việc và tự động phát hiện rủi ro tiến độ bằng AI.
-        </p>
 
-        <div className="login-features">
-          <div className="login-feature-item">
-            <span className="login-feature-icon">✓</span>
-            <div>
-              <strong>Minh bạch trách nhiệm RACI</strong>
-              <p>Mỗi công việc có đúng 1 Accountable nghiệm thu duy nhất và các Responsible thực hiện rõ ràng.</p>
-            </div>
+        <form className="auth-card" onSubmit={submit} noValidate>
+          <div className="auth-form-head">
+            <h2>{mode === "login" ? "Đăng nhập tài khoản" : "Tạo tài khoản mới"}</h2>
+            <p>
+              {mode === "login"
+                ? "Nhập email và mật khẩu của bạn để truy cập dự án."
+                : "Điền thông tin để bắt đầu sử dụng không gian làm việc."}
+            </p>
           </div>
-          <div className="login-feature-item">
-            <span className="login-feature-icon">✓</span>
-            <div>
-              <strong>Hàng đợi nhận việc mở (Open Work)</strong>
-              <p>Thành viên tự ứng tuyển việc phù hợp với kỹ năng; quản lý phê duyệt công khai, bình đẳng.</p>
-            </div>
-          </div>
-          <div className="login-feature-item">
-            <span className="login-feature-icon">✓</span>
-            <div>
-              <strong>Cảnh báo rủi ro sớm bằng dữ liệu</strong>
-              <p>Hệ thống AI giám sát liên tục tiến độ, thời hạn và điểm nghẽn để cảnh báo trước khi trễ hạn.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="login-form-container">
-        <form className="login-card" onSubmit={submit} noValidate>
-          <h2>{mode === "login" ? "Đăng nhập" : "Tạo tài khoản"}</h2>
-          <p className="login-subtitle">
-            {mode === "login"
-              ? "Nhập email và mật khẩu để vào không gian làm việc."
-              : "Điền thông tin để bắt đầu sử dụng hệ thống."}
-          </p>
 
           {notice && <p className="form-notice" role="status">{notice}</p>}
           {error && <p className="form-error" role="alert">{error}</p>}
 
           {mode === "register" && (
             <label className="field">
-              Tên hiển thị
+              <span>Họ và tên</span>
               <input
                 autoComplete="name"
                 value={displayName}
@@ -141,14 +120,14 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
           )}
 
           <label className="field">
-            Email
+            <span>Địa chỉ Email</span>
             <input
               type="email"
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               disabled={pending}
-              placeholder="name@example.com"
+              placeholder="ten@congty.com"
               aria-invalid={!!fields.email}
             />
             {fields.email?.map((message) => (
@@ -157,7 +136,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
           </label>
 
           <label className="field">
-            Mật khẩu
+            <span>Mật khẩu</span>
             <input
               type="password"
               autoComplete={mode === "login" ? "current-password" : "new-password"}
@@ -172,45 +151,58 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
             ))}
           </label>
 
-          <button className="button button-primary login-btn" disabled={pending} type="submit">
-            {pending ? "Đang xử lý…" : mode === "login" ? "Đăng nhập" : "Đăng ký tài khoản"}
+          <button className="button button-primary auth-submit-btn" disabled={pending} type="submit">
+            {pending ? "Đang xác thực…" : mode === "login" ? "Đăng nhập vào hệ thống" : "Đăng ký thành viên"}
           </button>
 
-          <div className="login-divider">
-            <span>hoặc</span>
+          <div className="auth-switch-link">
+            {mode === "login" ? (
+              <span>
+                Chưa có tài khoản?{" "}
+                <Link href="/register" className="text-link">
+                  Đăng ký ngay
+                </Link>
+              </span>
+            ) : (
+              <span>
+                Đã có tài khoản?{" "}
+                <Link href="/login" className="text-link">
+                  Đăng nhập
+                </Link>
+              </span>
+            )}
           </div>
 
-          <Link
-            href={mode === "login" ? "/register" : "/login"}
-            className={mode === "login" ? "button button-success-register" : "text-link align-center"}
-          >
-            {mode === "login" ? "Tạo tài khoản mới" : "Đã có tài khoản? Đăng nhập"}
-          </Link>
-
           {mode === "login" && (
-            <div className="demo-accounts-box">
-              <span className="demo-accounts-title">Tài khoản thử nghiệm:</span>
-              <div className="demo-accounts-buttons">
+            <div className="auth-demo-section">
+              <span className="auth-demo-label">Tài khoản kiểm thử nhanh (Demo):</span>
+              <div className="auth-demo-chips">
                 <button
                   type="button"
-                  className="demo-account-pill"
+                  className="auth-chip"
                   onClick={() => fillDemoAccount("manager@example.com")}
-                  title="Điền tài khoản Trưởng nhóm"
+                  title="Điền tài khoản Quản lý Lê Đình Bảo"
                 >
-                  Trưởng nhóm (Manager)
+                  <span className="chip-badge chip-mgr">A</span>
+                  <span>Trưởng nhóm (Lê Đình Bảo)</span>
                 </button>
                 <button
                   type="button"
-                  className="demo-account-pill"
+                  className="auth-chip"
                   onClick={() => fillDemoAccount("designer@example.com")}
-                  title="Điền tài khoản Thiết kế"
+                  title="Điền tài khoản Thành viên Trần An"
                 >
-                  Thiết kế (Designer)
+                  <span className="chip-badge chip-mem">R</span>
+                  <span>Thiết kế (Trần An)</span>
                 </button>
               </div>
             </div>
           )}
         </form>
+
+        <p className="auth-footer-tag">
+          CWRM Platform · Chuẩn phân định trách nhiệm RACI & Cảnh báo rủi ro tiến độ
+        </p>
       </div>
     </main>
   );
