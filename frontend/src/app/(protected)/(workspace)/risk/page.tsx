@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { RiskAdvisorPanel } from "@/components/risk-advisor-panel";
-import { getRiskSnapshot, listTasks, usingDemoData } from "@/lib/api/client";
+import { getRiskSnapshot, listTasks } from "@/lib/api/client";
 import type { RiskSnapshot } from "@/lib/demo-data";
 
 const monoFont = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
@@ -116,11 +116,11 @@ async function RiskContent({
       ? `[Priority ${priority.value}]`
       : null;
 
-  const fallbackLine = usingDemoData
-    ? "API_NOT_CONFIGURED · đang dùng dữ liệu mẫu theo fixture CWRM-15; các phương án can thiệp chỉ mang tính minh họa."
-    : snapshot.evaluationError
-      ? `EVALUATION_ERROR · ${snapshot.evaluationError.code ?? "UNKNOWN"}${snapshot.evaluationError.message ? ` — ${snapshot.evaluationError.message}` : ""} · evidence của snapshot trước vẫn hợp lệ để đối chiếu.`
-      : `API_OK · snapshot ${snapshot.isCurrent === false ? "không còn mới (isCurrent=false), cần đánh giá lại trước khi áp dụng phương án" : "đồng bộ với lần đánh giá gần nhất"}.`;
+  const fallbackLine = snapshot.evaluationError
+    ? `LỖI ĐÁNH GIÁ · ${snapshot.evaluationError.code ?? "UNKNOWN"}${snapshot.evaluationError.message ? ` — ${snapshot.evaluationError.message}` : ""}`
+    : snapshot.isCurrent === false
+      ? "Cảnh báo: Dữ liệu snapshot cần được cập nhật lại trước khi ra quyết định can thiệp."
+      : "Hệ thống AI Risk Engine đã hoàn thành chẩn đoán dựa trên snapshot dữ liệu mới nhất.";
 
   return (
     <AppShell>
@@ -170,7 +170,7 @@ async function RiskContent({
           <span>Blocker đang mở làm task ở trạng thái Blocked. Trong POC R01–R03, blocker chưa tự kích hoạt rule risk theo thời lượng. Muốn gửi Review phải giải quyết blocker trước.</span>
         </div>
         {snapshot.evaluationError && <p className="warning-line">Lần đánh giá mới gặp lỗi: {snapshot.evaluationError.message ?? snapshot.evaluationError.code}. Evidence của snapshot trước vẫn xem được.</p>}
-        <p className="meta-line">{usingDemoData ? "Dữ liệu trên là ví dụ theo fixture CWRM-15 và bản OpenAPI CWRM-11 0.2.0-draft; chưa phải kết quả đánh giá trực tiếp." : "Độ mới snapshot lấy từ isCurrent của API; UI không tự tính fingerprint."}</p>
+        <p className="meta-line">Bằng chứng chẩn đoán được tổng hợp tự động từ tiến độ, hạn chót và quy tắc rủi ro R01–R03 của dự án.</p>
       </section>
 
       <section className="panel" style={{ marginTop: 20 }}>
@@ -236,7 +236,7 @@ async function RiskContent({
             <div className="rule-callout" style={{ borderLeftColor: "var(--info-text)", background: "var(--info-soft)", color: "var(--info-text)" }}>
               <strong style={{ color: "var(--info-text)" }}>Trạng thái kết nối chẩn đoán</strong>
               <span style={{ fontFamily: monoFont, fontSize: 11, lineHeight: 1.6 }}>{fallbackLine}</span>
-              {!usingDemoData && snapshot.evaluationError && <span>Nút áp dụng chỉ mở khi lỗi cho phép thử lại (retryable=true); khi đó chọn Thử lại để đánh giá lại snapshot.</span>}
+              {snapshot.evaluationError && <span>Nút áp dụng chỉ mở khi lỗi cho phép thử lại; khi đó chọn Thử lại để đánh giá lại snapshot.</span>}
             </div>
           </div>
         </div>

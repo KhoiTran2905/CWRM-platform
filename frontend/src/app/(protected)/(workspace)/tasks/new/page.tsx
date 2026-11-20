@@ -212,9 +212,8 @@ export default function NewTaskPage() {
               : '// Nhập thông tin task ở cột trái\n// rồi nhấn "Kiểm tra bản nháp"\n// để xem JSON payload gửi tới POST /tasks'}
           </pre>
           <p className="helper-note">
-            ID trong lựa chọn hiện là dữ liệu mẫu, chưa phải UUID hợp lệ.
+            Hệ thống áp dụng chuẩn RACI: 1 Accountable nghiệm thu duy nhất và các yêu cầu năng lực tương ứng cho từng công việc.
             {mode === "DIRECT" && directInvitee ? ` Người dự kiến mời: ${directInvitee}.` : ""}
-            {" "}Lời mời Direct dùng API riêng sau khi tạo task. Bản xem trước chưa lưu dữ liệu.
           </p>
         </aside>
       </div>

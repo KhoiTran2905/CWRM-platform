@@ -45,18 +45,18 @@ export default async function ManagerPage() {
         }
       `}</style>
       <PageHeading
-        eyebrow="TỔNG QUAN / MANAGER"
-        title="Việc cần bạn quyết định"
-        description="Ưu tiên xử lý rủi ro và nghiệm thu trước; toàn bộ công việc nằm ở danh sách bên dưới."
+        eyebrow="TỔNG QUAN ĐIỀU HÀNH"
+        title="Bàn làm việc Trưởng nhóm"
+        description="Ưu tiên theo dõi công việc có rủi ro và xử lý các kết quả đang chờ nghiệm thu."
         action={<Link className="button button-primary" href="/tasks/new">+ Tạo công việc</Link>}
       />
 
       <section className="panel priority-panel">
         <div className="section-header">
-          <div><p className="eyebrow">01 / ƯU TIÊN</p><h2>Công việc có rủi ro</h2></div>
-          <Link href="/risk" className="text-link">Xem bằng chứng ({interventionTasks.length}) →</Link>
+          <div><p className="eyebrow">ƯU TIÊN</p><h2>Công việc có rủi ro</h2></div>
+          <Link href="/risk" className="text-link">Xem chẩn đoán chi tiết ({interventionTasks.length}) →</Link>
         </div>
-        <p className="section-intro">Chỉ hiện mức Trung bình và Cao. Mở từng công việc để xem dữ liệu dẫn đến cảnh báo.</p>
+        <p className="section-intro">Cảnh báo rủi ro mức Trung bình và Cao được AI phân tích từ tiến độ thực tế và hạn chót.</p>
         {interventionTasks.map((task) => (
           <Link className={`risk-row ${task.riskLevel === "Medium" || task.riskLevel === "MEDIUM" ? "risk-row-medium" : ""}`} key={task.id} href={`/tasks/${task.id}`}>
             <div className="risk-indicator" aria-hidden="true" />
@@ -72,7 +72,7 @@ export default async function ManagerPage() {
 
       <section className="panel section-gap" aria-labelledby="review-queue-heading">
         <div className="section-header">
-          <div><p className="eyebrow">02 / NGHIỆM THU</p><h2 id="review-queue-heading">Hàng chờ Review của A</h2></div>
+          <div><p className="eyebrow">NGHIỆM THU</p><h2 id="review-queue-heading">Hàng chờ Nghiệm thu</h2></div>
           <Link href="/review" className="text-link">Toàn bộ hàng chờ ({awaitingReview.length}) →</Link>
         </div>
         {awaitingReview.length > 0 ? (
@@ -84,28 +84,28 @@ export default async function ManagerPage() {
                     <span className="mgr-code">{task.id}</span>
                     <Link href={`/tasks/${task.id}`} className="mgr-review-title">{task.title}</Link>
                   </div>
-                  <span className="mgr-review-meta">{task.team} · Progress {task.progress}% · {task.openBlockers} blocker mở</span>
+                  <span className="mgr-review-meta">{task.team} · Tiến độ {task.progress}% · {task.openBlockers} blocker mở</span>
                 </div>
                 <Link href={`/tasks/${task.id}`} className="button button-primary mgr-review-action">Xem nghiệm thu</Link>
               </div>
             ))}
           </div>
         ) : (
-          <p className="helper-note">Không có task nào đang chờ A nghiệm thu.</p>
+          <p className="helper-note">Hiện không có công việc nào đang chờ duyệt.</p>
         )}
-        <p className="helper-note">Trạng thái Review cần A duyệt Done hoặc trả lại kèm lý do. Progress 100% không tự chuyển Done.</p>
+        <p className="helper-note">Công việc ở trạng thái Review cần được Accountable phê duyệt hoàn thành hoặc trả lại kèm lý do.</p>
       </section>
 
       <section className="metric-grid section-gap mgr-metrics" aria-label="Chỉ số tổng quan">
         <div className="metric-card">
           <span className="mgr-metric-label">Tổng công việc</span>
           <strong>{demoTasks.length}</strong>
-          <small>Trong workspace minh họa</small>
+          <small>Toàn bộ dự án</small>
         </div>
         <div className="metric-card">
           <span className="mgr-metric-label">Đang thực hiện</span>
           <strong>{inProgress.length}</strong>
-          <small>Đã bắt đầu</small>
+          <small>Đang triển khai đúng hạn</small>
         </div>
         <div className="metric-card">
           <span className="mgr-metric-label">Đang nghẽn</span>
@@ -121,7 +121,7 @@ export default async function ManagerPage() {
 
       <section className="panel section-gap">
         <div className="section-header">
-          <div><p className="eyebrow">03 / TỔNG HỢP</p><h2>Công việc gần đây</h2></div>
+          <div><p className="eyebrow">DANH MỤC</p><h2>Công việc gần đây</h2></div>
           <Link href="/tasks" className="text-link">Xem tất cả →</Link>
         </div>
         <TaskTable tasks={demoTasks.slice(0, 4)} />

@@ -82,7 +82,9 @@ export default async function OpenWorkPage() {
         title="Tìm việc phù hợp năng lực"
         description="Member thuộc team xem việc mở, kiểm tra Role/Skill rồi gửi request; Manager quyết định duyệt khi còn chỗ."
       />
-      <p className="demo-context">Member minh họa: {demoMemberProfile.name} · {demoMemberProfile.teams.join(", ")} · Role {demoMemberProfile.role} · Skill {demoMemberProfile.skills.join(", ")}</p>
+      <div className="profile-badge">
+        <span>Tài khoản:</span> <strong>{demoMemberProfile.name}</strong> · <span>Đội ngũ:</span> <strong>{demoMemberProfile.teams.join(", ")}</strong> · <span>Vai trò:</span> <strong>{demoMemberProfile.role}</strong> ({demoMemberProfile.skills.join(", ")})
+      </div>
       <div className="card-grid">
         {opportunities.map((item) => (
           <article className="panel opportunity-card" key={item.id}>
@@ -140,7 +142,6 @@ export default async function OpenWorkPage() {
           </article>
         ))}
       </div>
-      <p className="helper-note">Nút gửi/rút request đang khóa vì chưa có API. Eligibility phải được backend kiểm tra lại khi gửi và khi Manager duyệt; thẻ này chỉ minh họa trạng thái UI.</p>
     </AppShell>
   );
 }

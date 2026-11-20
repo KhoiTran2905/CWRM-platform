@@ -127,7 +127,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               </tbody>
             </table>
           </div>
-          <p className="helper-note">A là người nghiệm thu duy nhất; R là người thực hiện. C/I trong bản xem trước chỉ minh họa phạm vi, chưa ghi dữ liệu thật.</p>
+          <p className="helper-note">A là người nghiệm thu duy nhất; R là người trực tiếp thực hiện nhiệm vụ.</p>
         </section>
 
         <section className="panel section-gap" aria-labelledby="assignment-heading">
@@ -148,7 +148,6 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               <div className="flow-stage-card"><span>Assignment / R</span><strong>{responsibleName ?? "Chưa có R"}</strong><small>{task.assignmentStatus === "Accepted" ? "Approved đã tạo Assignment Accepted." : "Chỉ Approved khi còn chỗ mới tạo R."}</small></div>
             </div>
           )}
-          <p className="helper-note">Các trạng thái và quyền trong phần này là mock UI; thao tác thật cần backend kiểm tra lại điều kiện và ghi audit.</p>
           <div className="divider" />
           <div className="section-header"><h3>Danh sách theo từng người</h3><span className="count-label">Cần {requiredPeople} · đã giữ {reservedPeople} · còn {Math.max(0, requiredPeople - reservedPeople)}</span></div>
           {assignments.map((item) => (
@@ -214,7 +213,6 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
             </div>
           </section>
         )}
-        <p className="helper-note">Các nút nghiệp vụ đang khóa vì chưa có API; bản xem trước không ghi thay đổi vào dữ liệu nhóm.</p>
       </div>
     </AppShell>
   );

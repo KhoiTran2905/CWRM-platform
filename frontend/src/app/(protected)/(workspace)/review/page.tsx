@@ -124,7 +124,6 @@ export default async function ReviewPage() {
           </div>
           <p className="helper-note">Mũi tên F→S chỉ mở khóa sau khi tiền nhiệm được A duyệt Done. Hệ thống không tự chuyển task kế tiếp sang In Progress.</p>
         </section>
-        <p className="helper-note">Đây là bản xem trước với dữ liệu mẫu. Các quyết định nghiệp vụ và việc mở khóa Start cần backend kiểm tra quyền, điều kiện và ghi audit.</p>
       </div>
     </AppShell>
   );

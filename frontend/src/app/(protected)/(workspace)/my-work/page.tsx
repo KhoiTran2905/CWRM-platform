@@ -81,7 +81,9 @@ export default function MyWorkPage() {
         title="Biết việc nào mình đã nhận"
         description="Lời mời nhận việc và task đang thực hiện được tách riêng, để Accepted không bị hiểu là Task Status."
       />
-      <p className="demo-context">Member minh họa: {demoDirectMemberProfile.name} · {demoDirectMemberProfile.teams.join(", ")}</p>
+      <div className="profile-badge">
+        <span>Tài khoản:</span> <strong>{demoDirectMemberProfile.name}</strong> · <span>Đội ngũ:</span> <strong>{demoDirectMemberProfile.teams.join(", ")}</strong> · <span>Vai trò:</span> <strong>{demoDirectMemberProfile.role}</strong>
+      </div>
 
       <section aria-labelledby="direct-invitation-heading">
         <div className="section-header">
