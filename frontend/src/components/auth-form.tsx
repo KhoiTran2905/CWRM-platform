@@ -11,6 +11,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -31,8 +32,15 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
       if (!displayName.trim() || Array.from(displayName.trim()).length > 120) {
         nextFields.displayName = ["Tên hiển thị cần từ 1 đến 120 ký tự."];
       }
-      if (Array.from(password).length < 8 || new TextEncoder().encode(password).length > 72) {
-        nextFields.password = ["Mật khẩu cần ít nhất 8 ký tự và tối đa 72 byte."];
+      if (Array.from(password).length < 8) {
+        nextFields.password = ["Mật khẩu phải có ít nhất 8 ký tự."];
+      } else if (new TextEncoder().encode(password).length > 72) {
+        nextFields.password = ["Mật khẩu không được vượt quá 72 byte UTF-8."];
+      }
+      if (!confirmPassword) {
+        nextFields.confirmPassword = ["Vui lòng nhập lại mật khẩu để xác nhận."];
+      } else if (confirmPassword !== password) {
+        nextFields.confirmPassword = ["Mật khẩu xác nhận không khớp với mật khẩu đã nhập."];
       }
     }
     if (Object.keys(nextFields).length) {
@@ -74,11 +82,15 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
         <span className="login-mark">C</span>
         <p className="eyebrow">CWRM PLATFORM</p>
         <h1>Công việc rõ người, rủi ro rõ bằng chứng.</h1>
-        <p>Đăng nhập để vào Workspace của bạn. Các màn công việc hiện vẫn là giao diện minh họa.</p>
+        <p>
+          {mode === "login"
+            ? "Đăng nhập để vào Workspace của bạn."
+            : "Đăng ký tài khoản để bắt đầu quản lý dự án và phân định trách nhiệm RACI."}
+        </p>
       </div>
       <form className="login-card" onSubmit={submit} noValidate>
         <h2>{mode === "login" ? "Đăng nhập" : "Tạo tài khoản"}</h2>
-        <p>{mode === "login" ? "Sử dụng tài khoản từ CWRM API." : "Sau khi đăng ký, hãy đăng nhập để bắt đầu."}</p>
+        <p>{mode === "login" ? "Sử dụng tài khoản từ CWRM API." : "Nhập thông tin bên dưới để đăng ký tài khoản mới."}</p>
         {notice && <p className="form-notice" role="status">{notice}</p>}
         {error && <p className="form-error" role="alert">{error}</p>}
         {mode === "register" && (
@@ -89,6 +101,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
               disabled={pending}
+              placeholder="Ví dụ: Nguyễn Văn A"
               aria-invalid={!!fields.displayName}
             />
             {fields.displayName?.map((message) => (
@@ -104,6 +117,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             disabled={pending}
+            placeholder="name@example.com"
             aria-invalid={!!fields.email}
           />
           {fields.email?.map((message) => (
@@ -118,14 +132,37 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             disabled={pending}
+            placeholder={mode === "register" ? "Tối thiểu 8 ký tự" : "••••••••"}
             aria-invalid={!!fields.password}
           />
+          {mode === "register" && (
+            <span style={{ fontSize: "11px", color: "var(--muted)", fontWeight: 450, marginTop: "-2px" }}>
+              Quy định: Ít nhất 8 ký tự (tối đa 72 byte).
+            </span>
+          )}
           {fields.password?.map((message) => (
             <span className="field-error" key={message}>{message}</span>
           ))}
         </label>
+        {mode === "register" && (
+          <label className="field">
+            Xác nhận mật khẩu
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              disabled={pending}
+              placeholder="Nhập lại mật khẩu"
+              aria-invalid={!!fields.confirmPassword}
+            />
+            {fields.confirmPassword?.map((message) => (
+              <span className="field-error" key={message}>{message}</span>
+            ))}
+          </label>
+        )}
         <button className="button button-primary" disabled={pending} type="submit">
-          {pending ? "Đang xử lý…" : mode === "login" ? "Đăng nhập" : "Đăng ký"}
+          {pending ? "Đang xử lý…" : mode === "login" ? "Đăng nhập" : "Đăng ký tài khoản"}
         </button>
         <Link href={mode === "login" ? "/register" : "/login"} className="text-link">
           {mode === "login" ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập"}
