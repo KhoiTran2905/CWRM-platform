@@ -8,10 +8,10 @@ export default async function TasksPage() {
   return (
     <AppShell>
       <style>{`
-        .table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: -4px 0 14px; }
-        .table-legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 11.5px; font-weight: 600; }
-        .table-legend > span { display: inline-flex; align-items: center; gap: 6px; }
-        .legend-avatar { display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; color: #ffffff; font-size: 8.5px; font-weight: 800; }
+        .table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; flex-shrink: 0; }
+        .table-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 11px; font-weight: 600; }
+        .table-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+        .legend-avatar { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; color: #ffffff; font-size: 8px; font-weight: 800; }
         .legend-avatar-a { background: #1f3a5f; }
         .legend-avatar-r { background: #0f766e; }
       `}</style>
@@ -21,7 +21,7 @@ export default async function TasksPage() {
         description="Theo dõi toàn bộ công việc trong dự án, phân công trách nhiệm RACI và tiến độ thực tế."
         action={<Link className="button button-primary" href="/tasks/new">+ Tạo công việc</Link>}
       />
-      <section className="panel">
+      <section className="panel panel-fill">
         <div className="section-header"><h2>Tất cả task</h2><span className="count-label">{demoTasks.length} công việc</span></div>
         <div className="table-toolbar">
           <div className="table-legend">

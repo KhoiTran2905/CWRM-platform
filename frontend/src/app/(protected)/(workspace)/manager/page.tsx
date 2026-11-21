@@ -21,27 +21,83 @@ export default async function ManagerPage() {
   return (
     <AppShell>
       <style>{`
-        .mgr-metrics .metric-card { min-height: 104px; padding: 15px 17px; }
-        .mgr-metrics .metric-card .mgr-metric-label { font-size: 11.5px; font-weight: 700; color: var(--muted); }
-        .mgr-metrics .metric-card strong { margin-top: 8px; font-size: 34px; font-weight: 800; letter-spacing: -.055em; line-height: .95; }
-        .mgr-metrics .metric-card small { margin-top: 10px; font-size: 10.5px; }
-        .mgr-metrics .metric-card .mgr-risk-tag { display: inline-flex; align-items: center; gap: 5px; width: fit-content; margin-top: 8px; padding: 3px 8px; border-radius: 100px; background: var(--danger-soft); color: var(--danger); font-size: 10.5px; font-weight: 800; letter-spacing: .01em; }
-        .mgr-risk-tag::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-        .mgr-review-list { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-        .mgr-review-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 13px; background: var(--card); border-bottom: 1px solid var(--border-soft); transition: background .15s ease; }
+        .mgr-page-grid {
+          display: grid;
+          grid-template-columns: 400px minmax(0, 1fr);
+          gap: 12px;
+          flex: 1;
+          min-height: 0;
+        }
+        .mgr-col-left {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          min-height: 0;
+        }
+        .mgr-col-right {
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+        .mgr-col-right .panel {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          margin-bottom: 0;
+        }
+        .mgr-scroll-box {
+          overflow-y: auto;
+          overflow-x: hidden;
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding-right: 4px;
+        }
+        .mgr-priority-card {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          border-top: 3px solid var(--danger);
+          margin-bottom: 0;
+        }
+        .mgr-review-card {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          border-top: 3px solid var(--primary);
+          margin-bottom: 0;
+        }
+        .mgr-metrics {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+          margin-bottom: 10px;
+          flex-shrink: 0;
+        }
+        .mgr-metrics .metric-card { min-height: 58px; padding: 7px 12px; }
+        .mgr-metrics .metric-card strong { margin-top: 1px; font-size: 21px; line-height: 1; }
+        .mgr-metrics .metric-card small { margin-top: 1px; font-size: 10px; }
+        .mgr-review-list { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .mgr-review-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; background: var(--card); border-bottom: 1px solid var(--border-soft); }
         .mgr-review-row:last-child { border-bottom: 0; }
         .mgr-review-row:hover { background: var(--card-soft); }
-        .mgr-review-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-        .mgr-review-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
-        .mgr-code { flex-shrink: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-numeric: tabular-nums; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; color: var(--faint); }
-        .mgr-review-title { color: var(--heading); font-size: 13px; font-weight: 750; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mgr-review-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .mgr-review-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+        .mgr-code { flex-shrink: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-numeric: tabular-nums; font-size: 9.5px; font-weight: 700; color: var(--faint); }
+        .mgr-review-title { color: var(--heading); font-size: 12px; font-weight: 700; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .mgr-review-title:hover { color: var(--accent-text); }
-        .mgr-review-meta { color: var(--muted); font-size: 10.5px; }
-        .mgr-review-action { flex-shrink: 0; min-height: 33px; padding: 0 13px; border-radius: 7px; font-size: 12px; }
-        @media (max-width: 640px) {
-          .mgr-review-row { align-items: flex-start; flex-direction: column; }
-          .mgr-review-title { white-space: normal; }
-          .mgr-review-action { width: 100%; }
+        .mgr-review-meta { color: var(--muted); font-size: 10px; }
+        .mgr-review-action { flex-shrink: 0; min-height: 26px; padding: 0 10px; border-radius: 6px; font-size: 11px; }
+        .risk-row { padding: 6px 10px; margin-top: 4px; gap: 8px; }
+        .risk-row-main strong { font-size: 12.5px; }
+        .risk-row-main span, .risk-row-evidence { font-size: 10.5px; }
+        @media (max-width: 900px) {
+          .mgr-page-grid { grid-template-columns: 1fr; }
         }
       `}</style>
       <PageHeading
@@ -51,81 +107,88 @@ export default async function ManagerPage() {
         action={<Link className="button button-primary" href="/tasks/new">+ Tạo công việc</Link>}
       />
 
-      <section className="panel priority-panel">
-        <div className="section-header">
-          <div><p className="eyebrow">ƯU TIÊN</p><h2>Công việc có rủi ro</h2></div>
-          <Link href="/risk" className="text-link">Xem chẩn đoán chi tiết ({interventionTasks.length}) →</Link>
-        </div>
-        <p className="section-intro">Cảnh báo rủi ro mức Trung bình và Cao được AI phân tích từ tiến độ thực tế và hạn chót.</p>
-        {interventionTasks.map((task) => (
-          <Link className={`risk-row ${task.riskLevel === "Medium" || task.riskLevel === "MEDIUM" ? "risk-row-medium" : ""}`} key={task.id} href={`/tasks/${task.id}`}>
-            <div className="risk-indicator" aria-hidden="true" />
-            <div className="risk-row-main">
-              <strong>{task.title}</strong>
-              <span>{task.id} · {task.team} · Người thực hiện: {task.responsible ?? "Chưa có"}</span>
-            </div>
-            <div className="risk-row-evidence">Hạn {task.deadlineLabel} · Tiến độ {task.progress}%</div>
-            <StatusBadge kind="riskLevel" value={task.riskLevel} />
-          </Link>
-        ))}
-      </section>
-
-      <section className="panel section-gap" aria-labelledby="review-queue-heading">
-        <div className="section-header">
-          <div><p className="eyebrow">NGHIỆM THU</p><h2 id="review-queue-heading">Hàng chờ Nghiệm thu</h2></div>
-          <Link href="/review" className="text-link">Toàn bộ hàng chờ ({awaitingReview.length}) →</Link>
-        </div>
-        {awaitingReview.length > 0 ? (
-          <div className="mgr-review-list">
-            {awaitingReview.map((task) => (
-              <div className="mgr-review-row" key={task.id}>
-                <div className="mgr-review-main">
-                  <div className="mgr-review-line">
-                    <span className="mgr-code">{task.id}</span>
-                    <Link href={`/tasks/${task.id}`} className="mgr-review-title">{task.title}</Link>
-                  </div>
-                  <span className="mgr-review-meta">{task.team} · Tiến độ {task.progress}% · {task.openBlockers} blocker mở</span>
-                </div>
-                <Link href={`/tasks/${task.id}`} className="button button-primary mgr-review-action">Xem nghiệm thu</Link>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="helper-note">Hiện không có công việc nào đang chờ duyệt.</p>
-        )}
-        <p className="helper-note">Công việc ở trạng thái Review cần được Accountable phê duyệt hoàn thành hoặc trả lại kèm lý do.</p>
-      </section>
-
-      <section className="metric-grid section-gap mgr-metrics" aria-label="Chỉ số tổng quan">
+      <section className="mgr-metrics" aria-label="Chỉ số tổng quan">
         <div className="metric-card">
-          <span className="mgr-metric-label">Tổng công việc</span>
+          <span>Tổng công việc</span>
           <strong>{demoTasks.length}</strong>
           <small>Toàn bộ dự án</small>
         </div>
         <div className="metric-card">
-          <span className="mgr-metric-label">Đang thực hiện</span>
+          <span>Đang thực hiện</span>
           <strong>{inProgress.length}</strong>
-          <small>Đang triển khai đúng hạn</small>
+          <small>Đang triển khai</small>
         </div>
         <div className="metric-card">
-          <span className="mgr-metric-label">Đang nghẽn</span>
+          <span>Đang nghẽn</span>
           <strong>{blocked.length}</strong>
-          <small>Có blocker cần giải quyết</small>
+          <small>Cần gỡ blocker</small>
         </div>
         <div className="metric-card metric-alert">
-          <span className="mgr-metric-label">Rủi ro Cao</span>
+          <span>Rủi ro Cao</span>
           <strong>{highRisk.length}</strong>
-          <span className="mgr-risk-tag">R03 · 40 giờ · 30%</span>
+          <small>R03 · AI Alert</small>
         </div>
       </section>
 
-      <section className="panel section-gap">
-        <div className="section-header">
-          <div><p className="eyebrow">DANH MỤC</p><h2>Công việc gần đây</h2></div>
-          <Link href="/tasks" className="text-link">Xem tất cả →</Link>
+      <div className="mgr-page-grid">
+        <div className="mgr-col-left">
+          <section className="panel mgr-priority-card">
+            <div className="section-header">
+              <div><p className="eyebrow">ƯU TIÊN</p><h2>Công việc có rủi ro ({interventionTasks.length})</h2></div>
+              <Link href="/risk" className="text-link">Chi tiết →</Link>
+            </div>
+            <div className="mgr-scroll-box">
+              {interventionTasks.map((task) => (
+                <Link className={`risk-row ${task.riskLevel === "Medium" || task.riskLevel === "MEDIUM" ? "risk-row-medium" : ""}`} key={task.id} href={`/tasks/${task.id}`}>
+                  <div className="risk-indicator" aria-hidden="true" />
+                  <div className="risk-row-main">
+                    <strong>{task.title}</strong>
+                    <span>{task.id} · {task.team} · R: {task.responsible ?? "Chưa có"}</span>
+                  </div>
+                  <StatusBadge kind="riskLevel" value={task.riskLevel} />
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel mgr-review-card">
+            <div className="section-header">
+              <div><p className="eyebrow">NGHIỆM THU</p><h2>Hàng chờ Nghiệm thu ({awaitingReview.length})</h2></div>
+              <Link href="/review" className="text-link">Toàn bộ →</Link>
+            </div>
+            <div className="mgr-scroll-box">
+              {awaitingReview.length > 0 ? (
+                <div className="mgr-review-list">
+                  {awaitingReview.map((task) => (
+                    <div className="mgr-review-row" key={task.id}>
+                      <div className="mgr-review-main">
+                        <div className="mgr-review-line">
+                          <span className="mgr-code">{task.id}</span>
+                          <Link href={`/tasks/${task.id}`} className="mgr-review-title">{task.title}</Link>
+                        </div>
+                        <span className="mgr-review-meta">{task.team} · {task.progress}%</span>
+                      </div>
+                      <Link href={`/tasks/${task.id}`} className="button button-primary mgr-review-action">Nghiệm thu</Link>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="helper-note" style={{ margin: 0 }}>Không có task chờ duyệt.</p>
+              )}
+            </div>
+          </section>
         </div>
-        <TaskTable tasks={demoTasks.slice(0, 4)} />
-      </section>
+
+        <div className="mgr-col-right">
+          <section className="panel">
+            <div className="section-header">
+              <div><p className="eyebrow">TIẾN ĐỘ THỰC TẾ</p><h2>Danh sách công việc dự án</h2></div>
+              <Link href="/tasks" className="text-link">Toàn màn hình →</Link>
+            </div>
+            <TaskTable tasks={demoTasks} />
+          </section>
+        </div>
+      </div>
     </AppShell>
   );
 }

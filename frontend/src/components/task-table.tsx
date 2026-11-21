@@ -57,7 +57,7 @@ export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
     <div className="table-scroll">
       <style>{`
         .tt-table { min-width: 940px; }
-        .tt-table thead th { padding: 10px 12px; font-size: 10.5px; }
+        .tt-table thead th { position: sticky; top: 0; z-index: 5; background: var(--card-soft); padding: 8px 12px; font-size: 10.5px; box-shadow: 0 1px 0 var(--border); }
         .tt-table tbody tr.tt-row td { height: 44px; padding: 4px 12px; vertical-align: middle; transition: background .12s ease; }
         .tt-table tbody tr.tt-row:hover td { background: var(--accent-soft); }
         .tt-table tbody tr.tt-row:focus-within td { background: var(--accent-soft); }
