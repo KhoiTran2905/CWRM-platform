@@ -58,152 +58,79 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
         setError(caught.message);
         setFields(caught.fields);
       } else {
-        setError("Không thể gửi yêu cầu. Vui lòng kiểm tra kết nối và thử lại.");
+        setError("Không thể gửi yêu cầu. Vui lòng thử lại.");
       }
     } finally {
       setPending(false);
     }
   }
 
-  function fillDemoAccount(demoEmail: string) {
-    setEmail(demoEmail);
-    setPassword("change_me_demo_only");
-  }
-
   return (
-    <main className="auth-container">
-      <div className="auth-theme-toggle">
+    <main className="login-page">
+      <div className="login-theme-toggle">
         <ThemeToggle />
       </div>
-
-      <div className="auth-card-wrapper">
-        <div className="auth-brand-header">
-          <div className="auth-brand-icon" aria-hidden="true">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <h1>CWRM Platform</h1>
-          <p>Hệ thống Điều hành Dự án theo chuẩn RACI & Giám sát Rủi ro AI</p>
-        </div>
-
-        <form className="auth-card" onSubmit={submit} noValidate>
-          <div className="auth-form-head">
-            <h2>{mode === "login" ? "Đăng nhập tài khoản" : "Tạo tài khoản mới"}</h2>
-            <p>
-              {mode === "login"
-                ? "Nhập email và mật khẩu của bạn để truy cập dự án."
-                : "Điền thông tin để bắt đầu sử dụng không gian làm việc."}
-            </p>
-          </div>
-
-          {notice && <p className="form-notice" role="status">{notice}</p>}
-          {error && <p className="form-error" role="alert">{error}</p>}
-
-          {mode === "register" && (
-            <label className="field">
-              <span>Họ và tên</span>
-              <input
-                autoComplete="name"
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                disabled={pending}
-                placeholder="Ví dụ: Lê Đình Bảo"
-                aria-invalid={!!fields.displayName}
-              />
-              {fields.displayName?.map((message) => (
-                <span className="field-error" key={message}>{message}</span>
-              ))}
-            </label>
-          )}
-
-          <label className="field">
-            <span>Địa chỉ Email</span>
-            <input
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              disabled={pending}
-              placeholder="ten@congty.com"
-              aria-invalid={!!fields.email}
-            />
-            {fields.email?.map((message) => (
-              <span className="field-error" key={message}>{message}</span>
-            ))}
-          </label>
-
-          <label className="field">
-            <span>Mật khẩu</span>
-            <input
-              type="password"
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              disabled={pending}
-              placeholder="••••••••"
-              aria-invalid={!!fields.password}
-            />
-            {fields.password?.map((message) => (
-              <span className="field-error" key={message}>{message}</span>
-            ))}
-          </label>
-
-          <button className="button button-primary auth-submit-btn" disabled={pending} type="submit">
-            {pending ? "Đang xác thực…" : mode === "login" ? "Đăng nhập vào hệ thống" : "Đăng ký thành viên"}
-          </button>
-
-          <div className="auth-switch-link">
-            {mode === "login" ? (
-              <span>
-                Chưa có tài khoản?{" "}
-                <Link href="/register" className="text-link">
-                  Đăng ký ngay
-                </Link>
-              </span>
-            ) : (
-              <span>
-                Đã có tài khoản?{" "}
-                <Link href="/login" className="text-link">
-                  Đăng nhập
-                </Link>
-              </span>
-            )}
-          </div>
-
-          {mode === "login" && (
-            <div className="auth-demo-section">
-              <span className="auth-demo-label">Tài khoản kiểm thử nhanh (Demo):</span>
-              <div className="auth-demo-chips">
-                <button
-                  type="button"
-                  className="auth-chip"
-                  onClick={() => fillDemoAccount("manager@example.com")}
-                  title="Điền tài khoản Quản lý Lê Đình Bảo"
-                >
-                  <span className="chip-badge chip-mgr">A</span>
-                  <span>Trưởng nhóm (Lê Đình Bảo)</span>
-                </button>
-                <button
-                  type="button"
-                  className="auth-chip"
-                  onClick={() => fillDemoAccount("designer@example.com")}
-                  title="Điền tài khoản Thành viên Trần An"
-                >
-                  <span className="chip-badge chip-mem">R</span>
-                  <span>Thiết kế (Trần An)</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </form>
-
-        <p className="auth-footer-tag">
-          CWRM Platform · Chuẩn phân định trách nhiệm RACI & Cảnh báo rủi ro tiến độ
-        </p>
+      <div className="login-intro">
+        <span className="login-mark">C</span>
+        <p className="eyebrow">CWRM PLATFORM</p>
+        <h1>Công việc rõ người, rủi ro rõ bằng chứng.</h1>
+        <p>Đăng nhập để vào Workspace của bạn. Các màn công việc hiện vẫn là giao diện minh họa.</p>
       </div>
+      <form className="login-card" onSubmit={submit} noValidate>
+        <h2>{mode === "login" ? "Đăng nhập" : "Tạo tài khoản"}</h2>
+        <p>{mode === "login" ? "Sử dụng tài khoản từ CWRM API." : "Sau khi đăng ký, hãy đăng nhập để bắt đầu."}</p>
+        {notice && <p className="form-notice" role="status">{notice}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {mode === "register" && (
+          <label className="field">
+            Tên hiển thị
+            <input
+              autoComplete="name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              disabled={pending}
+              aria-invalid={!!fields.displayName}
+            />
+            {fields.displayName?.map((message) => (
+              <span className="field-error" key={message}>{message}</span>
+            ))}
+          </label>
+        )}
+        <label className="field">
+          Email
+          <input
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={pending}
+            aria-invalid={!!fields.email}
+          />
+          {fields.email?.map((message) => (
+            <span className="field-error" key={message}>{message}</span>
+          ))}
+        </label>
+        <label className="field">
+          Mật khẩu
+          <input
+            type="password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            disabled={pending}
+            aria-invalid={!!fields.password}
+          />
+          {fields.password?.map((message) => (
+            <span className="field-error" key={message}>{message}</span>
+          ))}
+        </label>
+        <button className="button button-primary" disabled={pending} type="submit">
+          {pending ? "Đang xử lý…" : mode === "login" ? "Đăng nhập" : "Đăng ký"}
+        </button>
+        <Link href={mode === "login" ? "/register" : "/login"} className="text-link">
+          {mode === "login" ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập"}
+        </Link>
+      </form>
     </main>
   );
 }
