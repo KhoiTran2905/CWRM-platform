@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { RiskAdvisorPanel } from "@/components/risk-advisor-panel";
 import { getRiskSnapshot, listTasks } from "@/lib/api/client";
 import { requireWorkspace } from "@/lib/auth/server";
-import type { RiskSnapshot } from "@/lib/demo-data";
+import { isDemoWorkspace, type RiskSnapshot } from "@/lib/demo-data";
 
 const monoFont = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
@@ -94,7 +94,7 @@ async function RiskContent({
   const resolvedParams = await searchParams;
   const targetId = resolvedParams.taskId;
   const workspace = await requireWorkspace();
-  const isDemo = workspace.id === "44444444-4444-4444-8444-444444444444" || workspace.name.toLowerCase().includes("marketing");
+  const isDemo = isDemoWorkspace(workspace.id);
   const tasks = isDemo ? await listTasks() : [];
   const task =
     (targetId ? tasks.find((item) => item.id === targetId) : undefined) ??

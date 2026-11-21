@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { TaskTable } from "@/components/task-table";
 import { listTasks } from "@/lib/api/client";
 import { requireWorkspace } from "@/lib/auth/server";
+import { isDemoWorkspace } from "@/lib/demo-data";
 
 function LockIcon() {
   return (
@@ -16,7 +17,7 @@ function LockIcon() {
 
 export default async function ReviewPage() {
   const workspace = await requireWorkspace();
-  const isDemo = workspace.id === "44444444-4444-4444-8444-444444444444" || workspace.name.toLowerCase().includes("marketing");
+  const isDemo = isDemoWorkspace(workspace.id);
   const demoTasks = isDemo ? await listTasks() : [];
   const awaitingReview = demoTasks.filter((task) => task.status === "Review" || task.status === "REVIEW");
   const successors = demoTasks.filter((task) => task.predecessorId);

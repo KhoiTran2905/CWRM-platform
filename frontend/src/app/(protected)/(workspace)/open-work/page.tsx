@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { demoMemberProfile, missingOpenWorkRequirements } from "@/lib/demo-data";
+import { demoMemberProfile, isDemoWorkspace, missingOpenWorkRequirements } from "@/lib/demo-data";
 import { listTasks } from "@/lib/api/client";
 import { requireWorkspace } from "@/lib/auth/server";
 
@@ -52,7 +52,7 @@ function CapacitySlots({
 
 export default async function OpenWorkPage() {
   const workspace = await requireWorkspace();
-  const isDemo = workspace.id === "44444444-4444-4444-8444-444444444444" || workspace.name.toLowerCase().includes("marketing");
+  const isDemo = isDemoWorkspace(workspace.id);
   const tasks = isDemo ? await listTasks() : [];
   const opportunities = tasks
     .filter((task) => {

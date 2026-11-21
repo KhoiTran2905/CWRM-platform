@@ -5,7 +5,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { useAppContext } from "@/components/app-context";
-import { demoDirectMemberProfile, demoTasks, type TaskSummary } from "@/lib/demo-data";
+import { demoDirectMemberProfile, demoTasks, isDemoWorkspace, type TaskSummary } from "@/lib/demo-data";
 import { listTasks } from "@/lib/api/client";
 
 interface UpdateDraft {
@@ -36,7 +36,7 @@ const loadingNote: CSSProperties = { margin: 0 };
 
 export default function MyWorkPage() {
   const { workspace } = useAppContext();
-  const isDemo = workspace?.id === "44444444-4444-4444-8444-444444444444" || workspace?.name.toLowerCase().includes("marketing");
+  const isDemo = isDemoWorkspace(workspace?.id);
   const [tasks, setTasks] = useState<TaskSummary[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, UpdateDraft>>({});
 

@@ -3,10 +3,11 @@ import { AppShell, PageHeading } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { listTasks } from "@/lib/api/client";
 import { requireWorkspace } from "@/lib/auth/server";
+import { isDemoWorkspace } from "@/lib/demo-data";
 
 export default async function WorkspaceHome() {
   const workspace = await requireWorkspace();
-  const isDemo = workspace.id === "44444444-4444-4444-8444-444444444444" || workspace.name.toLowerCase().includes("marketing");
+  const isDemo = isDemoWorkspace(workspace.id);
   const tasks = isDemo ? await listTasks() : [];
 
   const inProgress = tasks.filter((t) => t.status === "In Progress" || t.status === "IN_PROGRESS");
