@@ -2,9 +2,12 @@ import Link from "next/link";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { TaskTable } from "@/components/task-table";
 import { listTasks } from "@/lib/api/client";
+import { requireWorkspace } from "@/lib/auth/server";
 
 export default async function TasksPage() {
-  const demoTasks = await listTasks();
+  const workspace = await requireWorkspace();
+  const isDemo = workspace.id === "44444444-4444-4444-8444-444444444444" || workspace.name.toLowerCase().includes("marketing");
+  const demoTasks = isDemo ? await listTasks() : [];
   return (
     <AppShell>
       <style>{`

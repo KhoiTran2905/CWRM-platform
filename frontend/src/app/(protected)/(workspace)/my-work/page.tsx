@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
+import { useAppContext } from "@/components/app-context";
 import { demoDirectMemberProfile, demoTasks, type TaskSummary } from "@/lib/demo-data";
 import { listTasks } from "@/lib/api/client";
 
@@ -34,25 +35,29 @@ const sliderRowStyle: CSSProperties = {
 const loadingNote: CSSProperties = { margin: 0 };
 
 export default function MyWorkPage() {
+  const { workspace } = useAppContext();
+  const isDemo = workspace?.id === "44444444-4444-4444-8444-444444444444" || workspace?.name.toLowerCase().includes("marketing");
   const [tasks, setTasks] = useState<TaskSummary[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, UpdateDraft>>({});
 
   useEffect(() => {
     let active = true;
-    listTasks()
-      .then((data) => {
-        if (active) setTasks(data);
-      })
-      .catch(() => {
-        if (active) setTasks(demoTasks);
-      });
+    if (isDemo) {
+      listTasks()
+        .then((data) => {
+          if (active) setTasks(data);
+        })
+        .catch(() => {
+          if (active) setTasks(demoTasks);
+        });
+    }
     return () => {
       active = false;
     };
-  }, []);
+  }, [isDemo]);
 
-  const loaded = tasks !== null;
-  const list = tasks ?? [];
+  const loaded = isDemo ? tasks !== null : true;
+  const list = isDemo ? (tasks ?? []) : [];
   const invitation = list.find(
     (task) =>
       task.assignmentMode === "Direct" &&

@@ -3,9 +3,12 @@ import { AppShell, PageHeading } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { TaskTable } from "@/components/task-table";
 import { listTasks } from "@/lib/api/client";
+import { requireWorkspace } from "@/lib/auth/server";
 
 export default async function ManagerPage() {
-  const demoTasks = await listTasks();
+  const workspace = await requireWorkspace();
+  const isDemo = workspace.id === "44444444-4444-4444-8444-444444444444" || workspace.name.toLowerCase().includes("marketing");
+  const demoTasks = isDemo ? await listTasks() : [];
   const interventionTasks = demoTasks.filter(
     (task) =>
       task.riskLevel === "High" ||
@@ -138,16 +141,20 @@ export default async function ManagerPage() {
               <Link href="/risk" className="text-link">Chi tiết →</Link>
             </div>
             <div className="mgr-scroll-box">
-              {interventionTasks.map((task) => (
-                <Link className={`risk-row ${task.riskLevel === "Medium" || task.riskLevel === "MEDIUM" ? "risk-row-medium" : ""}`} key={task.id} href={`/tasks/${task.id}`}>
-                  <div className="risk-indicator" aria-hidden="true" />
-                  <div className="risk-row-main">
-                    <strong>{task.title}</strong>
-                    <span>{task.id} · {task.team} · R: {task.responsible ?? "Chưa có"}</span>
-                  </div>
-                  <StatusBadge kind="riskLevel" value={task.riskLevel} />
-                </Link>
-              ))}
+              {interventionTasks.length > 0 ? (
+                interventionTasks.map((task) => (
+                  <Link className={`risk-row ${task.riskLevel === "Medium" || task.riskLevel === "MEDIUM" ? "risk-row-medium" : ""}`} key={task.id} href={`/tasks/${task.id}`}>
+                    <div className="risk-indicator" aria-hidden="true" />
+                    <div className="risk-row-main">
+                      <strong>{task.title}</strong>
+                      <span>{task.id} · {task.team} · R: {task.responsible ?? "Chưa có"}</span>
+                    </div>
+                    <StatusBadge kind="riskLevel" value={task.riskLevel} />
+                  </Link>
+                ))
+              ) : (
+                <p className="helper-note" style={{ margin: 0, padding: "12px 6px" }}>Không có rủi ro nào cần xử lý.</p>
+              )}
             </div>
           </section>
 

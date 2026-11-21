@@ -6,7 +6,8 @@ import { requireWorkspace } from "@/lib/auth/server";
 
 export default async function WorkspaceHome() {
   const workspace = await requireWorkspace();
-  const tasks = await listTasks();
+  const isDemo = workspace.id === "44444444-4444-4444-8444-444444444444" || workspace.name.toLowerCase().includes("marketing");
+  const tasks = isDemo ? await listTasks() : [];
 
   const inProgress = tasks.filter((t) => t.status === "In Progress" || t.status === "IN_PROGRESS");
   const blocked = tasks.filter((t) => t.status === "Blocked" || t.status === "BLOCKED");
@@ -66,23 +67,25 @@ export default async function WorkspaceHome() {
       <section className="panel ws-hero">
         <div className="ws-hero-content">
           <div className="ws-hero-main">
-            <span className="status-badge status-success" style={{ padding: "1px 6px", fontSize: "11px" }}>
-              <span className="status-badge-dot status-badge-dot-success" />
-              Đang vận hành
+            <span className={`status-badge ${isDemo ? "status-success" : "status-info"}`} style={{ padding: "1px 6px", fontSize: "11px" }}>
+              <span className={`status-badge-dot ${isDemo ? "status-badge-dot-success" : "status-badge-dot-info"}`} />
+              {isDemo ? "Đang vận hành" : "Dự án mới khởi tạo"}
             </span>
-            <h2>Chiến dịch Quảng bá & Ra mắt Sản phẩm (Q4)</h2>
+            <h2>{isDemo ? "Chiến dịch Quảng bá & Ra mắt Sản phẩm (Q4)" : `Dự án: ${workspace.name}`}</h2>
             <p>
-              Cột mốc mục tiêu: <strong>Campaign Launch</strong> · Hạn chót hoàn thành sau 14 ngày.
+              {isDemo
+                ? "Cột mốc mục tiêu: Campaign Launch · Hạn chót hoàn thành sau 14 ngày."
+                : `Không gian dự án: ${workspace.name} · Chưa thiết lập cột mốc mục tiêu.`}
             </p>
           </div>
           <div className="ws-hero-stats">
             <div className="ws-stat-box">
               <span>Tiến độ tổng thể</span>
-              <strong>65%</strong>
+              <strong>{isDemo ? "65%" : "0%"}</strong>
             </div>
             <div className="ws-stat-box">
               <span>Đội ngũ</span>
-              <strong>3 người</strong>
+              <strong>{isDemo ? "3 người" : "1 người"}</strong>
             </div>
           </div>
         </div>
@@ -155,15 +158,29 @@ export default async function WorkspaceHome() {
               <Link href="/tasks" className="text-link">Xem tất cả →</Link>
             </div>
             <div className="ws-scroll-area">
-              {tasks.map((task) => (
-                <Link href={`/tasks/${task.id}`} className="priority-task-item" key={task.id}>
-                  <div className="priority-task-info">
-                    <span className="priority-task-title">{task.title}</span>
-                    <span className="priority-task-meta">{task.id} · {task.team} · Tiến độ: {task.progress}%</span>
-                  </div>
-                  <StatusBadge value={task.status} />
-                </Link>
-              ))}
+              {tasks.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "28px 16px", color: "var(--muted)" }}>
+                  <p style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 6px", color: "var(--heading)" }}>
+                    Chưa có công việc nào trong dự án này
+                  </p>
+                  <p style={{ fontSize: "12px", margin: "0 0 14px", lineHeight: 1.5 }}>
+                    Không gian <strong>&quot;{workspace.name}&quot;</strong> vừa được khởi tạo thành công.
+                  </p>
+                  <Link href="/tasks/new" className="button button-primary" style={{ height: "34px", fontSize: "12px" }}>
+                    + Tạo công việc đầu tiên
+                  </Link>
+                </div>
+              ) : (
+                tasks.map((task) => (
+                  <Link href={`/tasks/${task.id}`} className="priority-task-item" key={task.id}>
+                    <div className="priority-task-info">
+                      <span className="priority-task-title">{task.title}</span>
+                      <span className="priority-task-meta">{task.id} · {task.team} · Tiến độ: {task.progress}%</span>
+                    </div>
+                    <StatusBadge value={task.status} />
+                  </Link>
+                ))
+              )}
             </div>
           </section>
         </div>

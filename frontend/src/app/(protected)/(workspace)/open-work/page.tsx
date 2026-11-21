@@ -3,6 +3,7 @@ import { AppShell, PageHeading } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { demoMemberProfile, missingOpenWorkRequirements } from "@/lib/demo-data";
 import { listTasks } from "@/lib/api/client";
+import { requireWorkspace } from "@/lib/auth/server";
 
 const monoFont = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace';
 
@@ -50,7 +51,9 @@ function CapacitySlots({
 }
 
 export default async function OpenWorkPage() {
-  const tasks = await listTasks();
+  const workspace = await requireWorkspace();
+  const isDemo = workspace.id === "44444444-4444-4444-8444-444444444444" || workspace.name.toLowerCase().includes("marketing");
+  const tasks = isDemo ? await listTasks() : [];
   const opportunities = tasks
     .filter((task) => {
       const required = task.requiredPeople ?? task.slots ?? 1;
@@ -92,7 +95,12 @@ export default async function OpenWorkPage() {
         </div>
         <div className="scroll-container">
           <div className="card-grid" style={{ paddingRight: 4 }}>
-            {opportunities.map((item) => (
+            {opportunities.length === 0 ? (
+              <p className="helper-note" style={{ margin: 0, padding: "20px 8px" }}>
+                Không có công việc Open Work nào đang mở tuyển trong dự án này.
+              </p>
+            ) : (
+              opportunities.map((item) => (
               <article className="panel opportunity-card" key={item.id} style={{ margin: 0 }}>
                 <div className="task-card-top">
                   <span className="task-id">{item.id} · {item.team}</span>
@@ -152,7 +160,7 @@ export default async function OpenWorkPage() {
                   <button className="button button-secondary" disabled style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Không thể gửi request</button>
                 )}
               </article>
-            ))}
+            )))}
           </div>
         </div>
       </section>

@@ -3,6 +3,7 @@ import { AppShell, PageHeading } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { TaskTable } from "@/components/task-table";
 import { listTasks } from "@/lib/api/client";
+import { requireWorkspace } from "@/lib/auth/server";
 
 function LockIcon() {
   return (
@@ -14,7 +15,9 @@ function LockIcon() {
 }
 
 export default async function ReviewPage() {
-  const demoTasks = await listTasks();
+  const workspace = await requireWorkspace();
+  const isDemo = workspace.id === "44444444-4444-4444-8444-444444444444" || workspace.name.toLowerCase().includes("marketing");
+  const demoTasks = isDemo ? await listTasks() : [];
   const awaitingReview = demoTasks.filter((task) => task.status === "Review" || task.status === "REVIEW");
   const successors = demoTasks.filter((task) => task.predecessorId);
 
@@ -80,45 +83,49 @@ export default async function ReviewPage() {
             </div>
             <div className="review-scroll-area">
               <div className="ft-dependency-list">
-                {successors.map((task) => {
-                  const predecessor = demoTasks.find((item) => item.id === task.predecessorId);
-                  const unlocked = predecessor?.status === "Done";
-                  const lockLabel = unlocked
-                    ? "Sẵn sàng Start"
-                    : `Chờ "${predecessor?.title ?? task.predecessorId}" Done`;
-                  return (
-                    <div className={`ft-flow ${unlocked ? "ft-flow-open" : "ft-flow-locked"}`} key={task.id}>
-                      <Link className="ft-node ft-node-pre" href={`/tasks/${predecessor?.id ?? task.predecessorId}`}>
-                        <span className="ft-node-kind">Tiền nhiệm</span>
-                        <strong>{predecessor?.title ?? task.predecessorId}</strong>
-                        <span className="ft-node-meta">
-                          <span className="ft-code">{predecessor?.id ?? task.predecessorId}</span>
-                          {predecessor && <StatusBadge value={predecessor.status} />}
-                        </span>
-                      </Link>
-                      <div className="ft-link" aria-hidden="true">
-                        <span className="ft-link-line" />
-                        <span className="ft-link-type">F→S</span>
-                      </div>
-                      <Link className="ft-node ft-node-target" href={`/tasks/${task.id}`}>
-                        <span className="ft-node-kind">Task kế tiếp</span>
-                        <strong>{task.title}</strong>
-                        <span className="ft-node-meta">
-                          <span className="ft-code">{task.id}</span>
-                          <StatusBadge value={unlocked ? "Được phép Start" : "Start bị khóa"} />
-                        </span>
-                        {!unlocked ? (
-                          <span className="ft-lock">
-                            <LockIcon />
-                            {lockLabel}
+                {successors.length === 0 ? (
+                  <p className="helper-note" style={{ margin: 0, padding: "16px 8px" }}>Chưa có chuỗi phụ thuộc (Finish-to-Start) nào trong dự án này.</p>
+                ) : (
+                  successors.map((task) => {
+                    const predecessor = demoTasks.find((item) => item.id === task.predecessorId);
+                    const unlocked = predecessor?.status === "Done";
+                    const lockLabel = unlocked
+                      ? "Sẵn sàng Start"
+                      : `Chờ "${predecessor?.title ?? task.predecessorId}" Done`;
+                    return (
+                      <div className={`ft-flow ${unlocked ? "ft-flow-open" : "ft-flow-locked"}`} key={task.id}>
+                        <Link className="ft-node ft-node-pre" href={`/tasks/${predecessor?.id ?? task.predecessorId}`}>
+                          <span className="ft-node-kind">Tiền nhiệm</span>
+                          <strong>{predecessor?.title ?? task.predecessorId}</strong>
+                          <span className="ft-node-meta">
+                            <span className="ft-code">{predecessor?.id ?? task.predecessorId}</span>
+                            {predecessor && <StatusBadge value={predecessor.status} />}
                           </span>
-                        ) : (
-                          <span className="ft-lock ft-lock-open">{lockLabel}</span>
-                        )}
-                      </Link>
-                    </div>
-                  );
-                })}
+                        </Link>
+                        <div className="ft-link" aria-hidden="true">
+                          <span className="ft-link-line" />
+                          <span className="ft-link-type">F→S</span>
+                        </div>
+                        <Link className="ft-node ft-node-target" href={`/tasks/${task.id}`}>
+                          <span className="ft-node-kind">Task kế tiếp</span>
+                          <strong>{task.title}</strong>
+                          <span className="ft-node-meta">
+                            <span className="ft-code">{task.id}</span>
+                            <StatusBadge value={unlocked ? "Được phép Start" : "Start bị khóa"} />
+                          </span>
+                          {!unlocked ? (
+                            <span className="ft-lock">
+                              <LockIcon />
+                              {lockLabel}
+                            </span>
+                          ) : (
+                            <span className="ft-lock ft-lock-open">{lockLabel}</span>
+                          )}
+                        </Link>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </section>

@@ -99,43 +99,59 @@ export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
           </tr>
         </thead>
         <tbody>
-          {tasks.map((task) => {
-            const inReview = task.status === "Review" || task.status === "REVIEW";
-            return (
-              <tr key={task.id} className="tt-row">
-                <td>
-                  <div className="tt-cell-main">
-                    <Link href={`/tasks/${task.id}`} className="table-title">{task.title}</Link>
-                    <span className="table-subtitle">
-                      <span className="tt-code">{task.id}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{task.team}</span>
-                    </span>
-                  </div>
-                </td>
-                <td><StatusBadge value={task.status} /></td>
-                <td><StatusBadge value={task.assignmentMode} /></td>
-                <td>
-                  {task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : task.requestStatus ? <StatusBadge value={task.requestStatus} /> : <span className="muted">Chưa có</span>}
-                </td>
-                <td><AvatarStack accountable={task.accountable} responsible={task.responsible} /></td>
-                <td>{task.deadlineLabel}</td>
-                <td><StatusBadge value={task.riskLevel} /></td>
-                <td className="tt-action-cell">
-                  <div className="tt-actions">
-                    <Link href={`/tasks/${task.id}`} className="tt-quick" title="Mở chi tiết" aria-label={`Mở chi tiết ${task.id}`}>
-                      <OpenIcon />
-                    </Link>
-                    {inReview && (
-                      <Link href={`/tasks/${task.id}`} className="tt-quick tt-quick-primary" title="Xem nghiệm thu" aria-label={`Xem nghiệm thu ${task.id}`}>
-                        <CheckIcon />
+          {tasks.length === 0 ? (
+            <tr>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px 16px", color: "var(--muted)" }}>
+                <p style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--heading)", margin: "0 0 4px" }}>
+                  Chưa có công việc nào
+                </p>
+                <p style={{ fontSize: "12px", margin: "0 0 12px" }}>
+                  Hãy bấm &quot;+ Tạo công việc&quot; để thêm công việc mới và phân định trách nhiệm RACI.
+                </p>
+                <Link href="/tasks/new" className="button button-primary" style={{ height: "32px", fontSize: "12px", padding: "0 14px" }}>
+                  + Tạo công việc
+                </Link>
+              </td>
+            </tr>
+          ) : (
+            tasks.map((task) => {
+              const inReview = task.status === "Review" || task.status === "REVIEW";
+              return (
+                <tr key={task.id} className="tt-row">
+                  <td>
+                    <div className="tt-cell-main">
+                      <Link href={`/tasks/${task.id}`} className="table-title">{task.title}</Link>
+                      <span className="table-subtitle">
+                        <span className="tt-code">{task.id}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{task.team}</span>
+                      </span>
+                    </div>
+                  </td>
+                  <td><StatusBadge value={task.status} /></td>
+                  <td><StatusBadge value={task.assignmentMode} /></td>
+                  <td>
+                    {task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : task.requestStatus ? <StatusBadge value={task.requestStatus} /> : <span className="muted">Chưa có</span>}
+                  </td>
+                  <td><AvatarStack accountable={task.accountable} responsible={task.responsible} /></td>
+                  <td>{task.deadlineLabel}</td>
+                  <td><StatusBadge value={task.riskLevel} /></td>
+                  <td className="tt-action-cell">
+                    <div className="tt-actions">
+                      <Link href={`/tasks/${task.id}`} className="tt-quick" title="Mở chi tiết" aria-label={`Mở chi tiết ${task.id}`}>
+                        <OpenIcon />
                       </Link>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
+                      {inReview && (
+                        <Link href={`/tasks/${task.id}`} className="tt-quick tt-quick-primary" title="Xem nghiệm thu" aria-label={`Xem nghiệm thu ${task.id}`}>
+                          <CheckIcon />
+                        </Link>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </div>
