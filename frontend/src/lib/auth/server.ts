@@ -78,8 +78,9 @@ export const getAccount = cache(async (): Promise<Account | null> => {
 });
 
 export async function requireAccount(): Promise<Account> {
+  const token = await accessToken();
   const account = await getAccount();
-  if (!account) redirect("/login?expired=1");
+  if (!account) redirect(token ? "/login?expired=1" : "/login");
   return account;
 }
 

@@ -1014,7 +1014,7 @@ h3 {
 .profile-badge strong { color: var(--heading); }
 
 /* ==========================================================================
-   LOGIN PAGE (SOLID BLUE BACKGROUND - NO GRADIENT)
+   LOGIN PAGE (SOLID SKY BLUE BACKGROUND - NO GRADIENT)
    ========================================================================== */
 .login-page {
   display: grid;
@@ -1025,12 +1025,12 @@ h3 {
   max-height: 100vh;
   overflow: hidden;
   padding: 4vw 7vw;
-  background-color: #173b64;
+  background-color: #0284c7; /* Xanh da trời (Sky blue) */
   box-sizing: border-box;
 }
 
 :root[data-theme="dark"] .login-page {
-  background-color: #0c1a2e;
+  background-color: #075985; /* Xanh da trời sâu cho chế độ tối */
 }
 
 .login-theme-toggle {
@@ -1061,21 +1061,22 @@ h3 {
   height: 52px;
   margin-bottom: 32px;
   font-size: 28px;
-  background: #ffffff24;
-  border: 1px solid #ffffff44;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 10px;
   display: inline-grid;
   place-items: center;
   color: #ffffff;
   font-weight: 800;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .login-intro .eyebrow {
-  color: #5eead4;
+  color: #bae6fd;
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 800;
-  letter-spacing: .1em;
+  letter-spacing: .12em;
   text-transform: uppercase;
 }
 
@@ -1086,29 +1087,31 @@ h3 {
   line-height: 1.25;
   letter-spacing: -.03em;
   font-weight: 700;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .login-intro > p:last-child {
-  color: #cbd5e1;
+  color: #e0f2fe;
   font-size: 15px;
   line-height: 1.7;
-  margin: 8px 0 0;
+  margin: 12px 0 0;
 }
 
 .login-card {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 32px;
-  border-radius: 8px;
+  padding: 34px 30px;
+  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 45px -10px rgba(3, 73, 124, 0.32), 0 4px 16px rgba(3, 73, 124, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.9);
 }
 
 :root[data-theme="dark"] .login-card {
-  background: #1e293b;
-  border-color: #334155;
+  background: #0f172a;
+  border-color: #1e293b;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.55);
 }
 
 .login-card h2 {
@@ -1147,68 +1150,91 @@ h3 {
 }
 
 .login-card .field input {
-  height: 40px;
-  border-radius: 6px;
-  border: 1px solid #cbd5e1;
+  height: 42px;
+  border-radius: 7px;
+  border: 1.5px solid #cbd5e1;
   padding: 0 12px;
   font-size: 14px;
-  background: #ffffff;
+  background: #f8fafc;
   color: #0f172a;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
 }
 
 :root[data-theme="dark"] .login-card .field input {
-  background: #0f172a;
-  border-color: #475569;
+  background: #1e293b;
+  border-color: #334155;
   color: #f8fafc;
 }
 
 .login-card .field input:focus {
-  border-color: #1F3A5F;
-  box-shadow: 0 0 0 2px rgba(31, 58, 95, 0.25);
+  background: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.22);
+}
+
+:root[data-theme="dark"] .login-card .field input:focus {
+  background: #0f172a;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
 }
 
 .login-card .button {
   width: 100%;
-  margin-top: 4px;
-  height: 42px;
+  margin-top: 6px;
+  height: 44px;
   display: grid;
   place-items: center;
-  background: #1F3A5F;
+  background: #0284c7;
   color: #ffffff;
   font-size: 14.5px;
   font-weight: 700;
-  border-radius: 6px;
+  border-radius: 7px;
   border: none;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+  transition: background-color .15s ease, transform .1s ease, box-shadow .15s ease;
 }
 
 .login-card .button:hover:not(:disabled) {
-  background: #152b49;
+  background: #0369a1;
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.45);
+}
+
+.login-card .button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .login-card .text-link {
   align-self: center;
-  color: #0f766e;
+  color: #0284c7;
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
+  transition: color .15s ease;
 }
 
 .login-card .text-link:hover {
+  color: #0369a1;
   text-decoration: underline;
 }
 
 :root[data-theme="dark"] .login-card .text-link {
-  color: #2dd4bf;
+  color: #38bdf8;
+}
+
+:root[data-theme="dark"] .login-card .text-link:hover {
+  color: #7dd3fc;
 }
 
 .form-error, .form-notice {
   padding: 11px 13px;
-  border-radius: 6px;
+  border-radius: 7px;
   font-size: 13px;
   line-height: 1.5;
 }
 .form-error { color: var(--danger-text); background: var(--danger-soft); border: 1px solid var(--danger-border); }
-.form-notice { color: #0f766e; background: #f0fdfa; border: 1px solid #ccfbf1; }
+.form-notice { color: #0369a1; background: #f0f9ff; border: 1px solid #bae6fd; font-weight: 500; }
+.field-error { color: var(--danger-text); font-size: 11px; font-weight: 500; }
+.field input[aria-invalid="true"] { border-color: var(--danger); }
 .field-error { color: var(--danger-text); font-size: 11px; font-weight: 500; }
 .field input[aria-invalid="true"] { border-color: var(--danger); }
 
