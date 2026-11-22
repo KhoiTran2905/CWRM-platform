@@ -14,12 +14,8 @@ import {
   EyeOff,
   ArrowRight,
   Loader2,
-  ShieldAlert,
-  Users,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
-  CheckSquare,
 } from "lucide-react";
 
 export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?: string }) {
@@ -91,120 +87,46 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
   }
 
   return (
-    <main className="auth-split-wrapper">
+    <div className="auth-centered-page">
       <div className="auth-theme-toggle">
         <ThemeToggle />
       </div>
 
-      {/* Left Column: B2B SaaS Showcase & Product Values */}
-      <section className="auth-showcase-pane">
-        <div className="showcase-content">
-          <div className="showcase-brand">
-            <span className="showcase-brand-mark">
-              C<span className="showcase-dot" />
+      <div className="auth-card-modal">
+        {/* Card Header Strip */}
+        <div className="auth-modal-header">
+          <div className="auth-modal-brand">
+            <span className="brand-mark">
+              C<span className="brand-mark-dot" />
             </span>
-            <span className="showcase-pill">
-              <Sparkles size={13} className="text-sky-400" />
-              <span>CWRM PLATFORM · B2B SAAS</span>
-            </span>
-          </div>
-
-          <h1 className="showcase-title">
-            Công việc rõ người, <br />
-            <span className="text-sky-400">rủi ro rõ bằng chứng.</span>
-          </h1>
-
-          <p className="showcase-desc">
-            Nền tảng điều phối công việc liên phòng ban, phân định trách nhiệm theo ma trận RACI và kiểm soát rủi ro AI theo thời gian thực.
-          </p>
-
-          {/* Interactive Feature Previews to eliminate generic AI template feel */}
-          <div className="showcase-previews">
-            {/* RACI Card Preview */}
-            <div className="preview-card">
-              <div className="preview-card-header">
-                <div className="flex items-center gap-2">
-                  <div className="preview-icon-box bg-sky-500/10 text-sky-400">
-                    <CheckSquare size={16} />
-                  </div>
-                  <div>
-                    <strong className="text-xs text-white">TASK-104: Chuẩn bị trang đích</strong>
-                    <div className="text-[11px] text-slate-400">Phân công RACI trực tiếp</div>
-                  </div>
-                </div>
-                <span className="status-pill status-pill-success">
-                  <span className="status-pill-dot" />
-                  Đang thực hiện
-                </span>
-              </div>
-              <div className="preview-raci-row">
-                <span className="raci-chip raci-chip-a">
-                  <strong>A</strong> T.M. Khôi (Tech Lead)
-                </span>
-                <span className="raci-chip raci-chip-r">
-                  <strong>R</strong> Đ.V. Hiệp (Frontend)
-                </span>
-              </div>
-            </div>
-
-            {/* AI Risk Card Preview */}
-            <div className="preview-card">
-              <div className="preview-card-header">
-                <div className="flex items-center gap-2">
-                  <div className="preview-icon-box bg-amber-500/10 text-amber-400">
-                    <ShieldAlert size={16} />
-                  </div>
-                  <div>
-                    <strong className="text-xs text-white">R01: Tiến độ chậm 3 ngày</strong>
-                    <div className="text-[11px] text-slate-400">Cảnh báo rủi ro tự động</div>
-                  </div>
-                </div>
-                <span className="status-pill status-pill-warn">
-                  <span className="status-pill-dot" />
-                  Rủi ro Trung bình
-                </span>
-              </div>
-              <div className="preview-risk-meta">
-                <span>Độ tin cậy AI: <strong>94%</strong></span>
-                <span>Bằng chứng: <strong>1 tài liệu</strong></span>
-              </div>
-            </div>
-          </div>
-
-          <div className="showcase-footer">
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <Users size={14} className="text-sky-400" />
-              <span>Chuẩn hóa quy trình điều phối dự án và kiểm duyệt nghiệm thu.</span>
+            <div>
+              <h1 className="auth-modal-title">CWRM Platform</h1>
+              <p className="auth-modal-subtitle">Hệ thống Điều hành & Quản lý Dự án</p>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Right Column: Clean, Polished Auth Form */}
-      <section className="auth-form-pane">
-        <div className="auth-card-box">
-          <div className="auth-header">
-            <div className="auth-logo-mini">
-              <span>C</span>
-            </div>
+        {/* Card Form Body */}
+        <div className="auth-modal-body">
+          <div className="auth-body-title">
             <h2>{mode === "login" ? "Đăng nhập hệ thống" : "Tạo tài khoản mới"}</h2>
             <p>
               {mode === "login"
-                ? "Chào mừng bạn trở lại! Nhập thông tin để vào Không gian làm việc."
-                : "Điền thông tin bên dưới để bắt đầu quản lý dự án với CWRM."}
+                ? "Sử dụng tài khoản CWRM của bạn để vào không gian làm việc."
+                : "Nhập thông tin bên dưới để bắt đầu đăng ký tài khoản mới."}
             </p>
           </div>
 
           {notice && (
             <div className="auth-alert alert-notice" role="status">
-              <CheckCircle2 size={17} className="flex-shrink-0" />
+              <CheckCircle2 size={16} className="flex-shrink-0" />
               <span>{notice}</span>
             </div>
           )}
 
           {error && (
             <div className="auth-alert alert-error" role="alert">
-              <AlertCircle size={17} className="flex-shrink-0" />
+              <AlertCircle size={16} className="flex-shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -317,13 +239,13 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
             <button type="submit" className="auth-submit-btn" disabled={pending}>
               {pending ? (
                 <>
-                  <Loader2 size={17} className="animate-spin" />
+                  <Loader2 size={16} className="animate-spin" />
                   <span>Đang xử lý…</span>
                 </>
               ) : (
                 <>
                   <span>{mode === "login" ? "Đăng nhập" : "Đăng ký tài khoản"}</span>
-                  <ArrowRight size={17} />
+                  <ArrowRight size={16} />
                 </>
               )}
             </button>
@@ -347,7 +269,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "register"; notice?
             )}
           </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }

@@ -80,6 +80,9 @@ export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
         .tt-action-cell { width: 76px; text-align: right; }
         .tt-actions { display: flex; justify-content: flex-end; gap: 5px; opacity: 0; transform: translateX(4px); transition: opacity .15s ease, transform .15s ease; }
         .tt-row:hover .tt-actions, .tt-row:focus-within .tt-actions { opacity: 1; transform: none; }
+        @media (hover: none) or (max-width: 1024px) {
+          .tt-actions { opacity: 1; transform: none; }
+        }
         .tt-quick { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text-2); }
         .tt-quick:hover { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-text); }
         .tt-quick-primary { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-text); }
@@ -89,12 +92,12 @@ export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
         <thead>
           <tr>
             <th>Công việc</th>
-            <th>Task Status</th>
+            <th>Trạng thái</th>
             <th>Hình thức</th>
-            <th>Assignment / Request</th>
+            <th>Trạng thái giao nhận</th>
             <th>A / R</th>
-            <th>Hạn</th>
-            <th>Risk</th>
+            <th>Hạn hoàn thành</th>
+            <th>Mức rủi ro</th>
             <th className="tt-action-head"><span className="muted">Thao tác</span></th>
           </tr>
         </thead>

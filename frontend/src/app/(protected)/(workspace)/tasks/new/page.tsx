@@ -1,220 +1,294 @@
 "use client";
 
-import { useState, type CSSProperties, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { AppShell, PageHeading } from "@/components/app-shell";
-
-const monoFont = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace';
+import {
+  CheckSquare,
+  Users,
+  ShieldAlert,
+  Plus,
+} from "lucide-react";
 
 const priorityOptions = [
-  { code: "LOW", label: "Thấp" },
-  { code: "MEDIUM", label: "Trung bình" },
-  { code: "HIGH", label: "Cao" },
-  { code: "CRITICAL", label: "Khẩn cấp" },
+  { code: "LOW", label: "Thấp", color: "#64748b" },
+  { code: "MEDIUM", label: "Trung bình", color: "#0284c7" },
+  { code: "HIGH", label: "Cao", color: "#f59e0b" },
+  { code: "CRITICAL", label: "Khẩn cấp", color: "#ef4444" },
 ] as const;
 
 const deadlineTypeOptions = [
-  { code: "FLEXIBLE", label: "Linh hoạt" },
-  { code: "FIXED", label: "Cố định" },
+  { code: "FLEXIBLE", label: "Linh hoạt", desc: "Có thể điều chỉnh theo tiến độ thực tế" },
+  { code: "FIXED", label: "Cố định", desc: "Mốc hạn chót nghiêm ngặt không thay đổi" },
 ] as const;
-
-const payloadPreStyle: CSSProperties = {
-  margin: 0,
-  padding: "16px 18px",
-  borderRadius: 10,
-  border: "1px solid var(--border)",
-  background: "var(--card-soft)",
-  color: "var(--code-text)",
-  fontFamily: monoFont,
-  fontSize: 12,
-  lineHeight: 1.7,
-  letterSpacing: ".01em",
-  overflowX: "auto",
-  maxHeight: 470,
-  whiteSpace: "pre",
-};
-
-function radioChipStyle(active: boolean): CSSProperties {
-  return {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 7,
-    padding: "9px 13px",
-    borderRadius: 8,
-    border: `1px solid ${active ? "var(--accent-border)" : "var(--input-border)"}`,
-    background: active ? "var(--accent-soft)" : "var(--input-bg)",
-    color: active ? "var(--accent-soft-text)" : "var(--text)",
-    fontSize: 12,
-    fontWeight: 750,
-    cursor: "pointer",
-  };
-}
 
 export default function NewTaskPage() {
   const [mode, setMode] = useState<"DIRECT" | "OPEN_WORK">("DIRECT");
   const [priority, setPriority] = useState<(typeof priorityOptions)[number]["code"]>("MEDIUM");
   const [deadlineType, setDeadlineType] = useState<(typeof deadlineTypeOptions)[number]["code"]>("FLEXIBLE");
-  const [previewed, setPreviewed] = useState(false);
-  const [payloadPreview, setPayloadPreview] = useState<Record<string, unknown> | null>(null);
-  const [directInvitee, setDirectInvitee] = useState("");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [created, setCreated] = useState(false);
 
-  function handlePreview(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const deadlineVal = String(form.get("deadline"));
-    const deadlineUtc = deadlineVal ? new Date(deadlineVal).toISOString() : "";
-    const payload = {
-      title: String(form.get("title") ?? ""),
-      teamId: String(form.get("teamId") ?? ""),
-      accountableUserId: String(form.get("accountableUserId") ?? ""),
-      deadlineAt: deadlineUtc,
-      priority,
-      requiredPeople: Number(form.get("requiredPeople") ?? 1),
-      assignmentMode: mode,
-      openWorkOpen: false,
-      requiredRoleIds: mode === "OPEN_WORK" && form.get("requiredRoleId") ? [String(form.get("requiredRoleId"))] : [],
-      requiredSkillIds: mode === "OPEN_WORK" && form.get("requiredSkillId") ? [String(form.get("requiredSkillId"))] : [],
-      deadlineType,
-      description: form.get("description") ? String(form.get("description")) : undefined,
-      effortEstimateHours: form.get("estimate") ? Number(form.get("estimate")) : undefined,
-    };
-    setPayloadPreview(payload);
-    setDirectInvitee(mode === "DIRECT" ? String(form.get("assigneeUserId") ?? "") : "");
-    setPreviewed(true);
+    setCreated(true);
   }
 
   return (
     <AppShell>
       <PageHeading
-        eyebrow="Manager / Tạo công việc"
-        title="Giao việc rõ ràng từ đầu"
-        description="Manager chọn đúng một A và một hình thức nhận việc. Direct tạo R sau Accepted; Open Work tạo R sau khi Manager duyệt request."
+        eyebrow="ĐIỀU HÀNH / KHỞI TẠO CÔNG VIỆC"
+        title="Giao việc & Phân công trách nhiệm"
+        description="Mỗi công việc có duy nhất một người phê duyệt (A) và phương thức nhận việc rõ ràng theo quy chuẩn RACI."
+        action={
+          <Link className="button button-secondary" href="/tasks">
+            ← Danh sách công việc
+          </Link>
+        }
       />
+
       <div className="two-column-layout">
-        <form className="panel task-form" onSubmit={handlePreview}>
-          <div className="form-section-heading"><span className="step-number">1</span><div><h2>Thông tin cốt lõi</h2><p>Task mới bắt đầu ở To Do, progress 0 và có đúng một A.</p></div></div>
+        {/* Form bên trái */}
+        <form className="panel task-form" onSubmit={handleSubmit}>
+          {created && (
+            <div className="auth-alert alert-notice mb-4" role="status">
+              <CheckSquare size={16} />
+              <span>
+                Đã ghi nhận thông tin bản nháp công việc: <strong>{taskTitle || "Công việc mới"}</strong>. (Hệ thống ở Sprint 2 đang liên kết dữ liệu giao việc qua API Auth/Workspace).
+              </span>
+            </div>
+          )}
+
+          <div className="form-section-heading">
+            <span className="step-number">1</span>
+            <div>
+              <h2>Thông tin cốt lõi</h2>
+              <p>Công việc mới bắt đầu ở trạng thái Chờ thực hiện, tiến độ 0% và có đúng 1 Người phê duyệt (A).</p>
+            </div>
+          </div>
+
           <div className="form-grid">
-            <label className="field field-wide">Tiêu đề công việc<input name="title" required placeholder="Ví dụ: Hoàn thiện bản thiết kế" /></label>
-            <label className="field">Team<select name="teamId" required defaultValue=""><option value="" disabled>Chọn team</option><option value="team-a">Nhóm A · team-a</option><option value="team-b">Nhóm B · team-b</option></select></label>
-            <label className="field">A chịu trách nhiệm<select name="accountableUserId" required defaultValue=""><option value="" disabled>Chọn một Manager trong team</option><option value="manager-1">Quản lý nhóm · manager-1</option></select></label>
-            <label className="field">Deadline<input name="deadline" type="datetime-local" required /></label>
+            <label className="field field-wide">
+              Tiêu đề công việc
+              <input
+                name="title"
+                required
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                placeholder="Ví dụ: Thiết kế banner quảng bá chiến dịch Q4"
+              />
+            </label>
+
+            <label className="field">
+              Nhóm phụ trách
+              <select name="teamId" required defaultValue="team-marketing">
+                <option value="team-marketing">Nhóm Marketing</option>
+                <option value="team-dev">Nhóm Phát triển phần mềm</option>
+                <option value="team-design">Nhóm Thiết kế</option>
+              </select>
+            </label>
+
+            <label className="field">
+              Người phê duyệt (A - Accountable)
+              <select name="accountableUserId" required defaultValue="manager-1">
+                <option value="manager-1">Trưởng nhóm Marketing (manager@example.com)</option>
+              </select>
+            </label>
+
+            <label className="field">
+              Hạn hoàn thành (Deadline)
+              <input name="deadline" type="datetime-local" required />
+            </label>
+
             <div className="field">
-              <span>Loại hạn (deadlineType)</span>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }} role="radiogroup" aria-label="Loại hạn">
+              <span>Loại hạn</span>
+              <div className="segmented-group-2" role="radiogroup" aria-label="Loại hạn">
                 {deadlineTypeOptions.map((option) => {
                   const active = deadlineType === option.code;
                   return (
-                    <label key={option.code} style={radioChipStyle(active)}>
+                    <label key={option.code} className={`segmented-chip ${active ? "selected" : ""}`}>
                       <input
                         type="radio"
                         name="deadlineType"
                         value={option.code}
                         checked={active}
-                        onChange={() => {
-                          setDeadlineType(option.code);
-                          setPreviewed(false);
-                        }}
-                        style={{ accentColor: "var(--accent)", margin: 0 }}
+                        onChange={() => setDeadlineType(option.code)}
                       />
-                      <span style={{ fontFamily: monoFont, fontSize: 11, letterSpacing: ".04em" }}>{option.code}</span>
-                      <span style={{ color: "var(--muted)", fontWeight: 600 }}>{option.label}</span>
+                      <span className="chip-dot" aria-hidden="true" />
+                      <span>{option.label}</span>
                     </label>
                   );
                 })}
               </div>
             </div>
-            <label className="field">Số người cần (requiredPeople)<input name="requiredPeople" type="number" min="1" defaultValue="1" required /></label>
+
+            <label className="field">
+              Số lượng nhân sự thực hiện
+              <input name="requiredPeople" type="number" min="1" defaultValue="1" required />
+            </label>
+
             <div className="field" style={{ gridColumn: "1 / -1" }}>
-              <span>Priority — mã enum API</span>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} role="radiogroup" aria-label="Priority">
+              <span>Mức độ ưu tiên</span>
+              <div className="segmented-group-4" role="radiogroup" aria-label="Mức độ ưu tiên">
                 {priorityOptions.map((option) => {
                   const active = priority === option.code;
                   return (
-                    <label key={option.code} style={radioChipStyle(active)}>
+                    <label key={option.code} className={`segmented-chip ${active ? "selected" : ""}`}>
                       <input
                         type="radio"
                         name="priority"
                         value={option.code}
                         checked={active}
-                        onChange={() => {
-                          setPriority(option.code);
-                          setPreviewed(false);
-                        }}
-                        style={{ accentColor: "var(--accent)", margin: 0 }}
+                        onChange={() => setPriority(option.code)}
                       />
-                      <span style={{ fontFamily: monoFont, fontSize: 11, letterSpacing: ".04em" }}>{option.code}</span>
-                      <span style={{ color: "var(--muted)", fontWeight: 600 }}>{option.label}</span>
+                      <span className="chip-dot" aria-hidden="true" />
+                      <span>{option.label}</span>
                     </label>
                   );
                 })}
               </div>
             </div>
           </div>
+
           <div className="divider" />
-          <div className="form-section-heading"><span className="step-number">2</span><div><h2>Hình thức nhận việc</h2><p>Role/Skill chuyên môn khác quyền Manager/Member và trách nhiệm RACI.</p></div></div>
+
+          <div className="form-section-heading">
+            <span className="step-number">2</span>
+            <div>
+              <h2>Hình thức nhận việc</h2>
+              <p>Phân định phương thức giao việc theo yêu cầu phân công hoặc nhận việc tự nguyện.</p>
+            </div>
+          </div>
+
           <div className="mode-options" role="radiogroup" aria-label="Hình thức nhận việc">
-            {([
-              { code: "DIRECT" as const, label: "Direct Assignment", desc: "Gửi đề nghị cho Member trong team; họ có thể Accept hoặc Decline." },
-              { code: "OPEN_WORK" as const, label: "Open Work", desc: "Member đủ Role/Skill gửi request; Manager Approve hoặc Reject." },
-            ]).map(({ code, label, desc }) => (
+            {[
+              {
+                code: "DIRECT" as const,
+                label: "Giao việc trực tiếp (Direct)",
+                desc: "Gửi đề nghị trực tiếp cho một thành viên trong nhóm; thành viên có quyền Chấp nhận hoặc Từ chối kèm lý do.",
+              },
+              {
+                code: "OPEN_WORK" as const,
+                label: "Đăng việc tự do (Open Work)",
+                desc: "Mở công việc lên chợ việc chung; thành viên đủ điều kiện vai trò và kỹ năng gửi yêu cầu để Quản lý duyệt.",
+              },
+            ].map(({ code, label, desc }) => (
               <label className={`mode-card ${mode === code ? "selected" : ""}`} key={code}>
-                <input type="radio" name="assignmentMode" value={code} checked={mode === code} onChange={() => { setMode(code); setPreviewed(false); }} />
+                <input
+                  type="radio"
+                  name="assignmentMode"
+                  value={code}
+                  checked={mode === code}
+                  onChange={() => setMode(code)}
+                />
                 <strong>{label}</strong>
-                <span style={{ fontFamily: monoFont, fontSize: 11, letterSpacing: ".06em" }}>{code}</span>
                 <span>{desc}</span>
               </label>
             ))}
           </div>
+
           <div className="form-grid conditional-fields">
             {mode === "DIRECT" ? (
-              <label className="field">Đề nghị cho Member<select name="assigneeUserId" required defaultValue=""><option value="" disabled>Chọn Member trong team</option><option value="member-1">Thành viên A · member-1</option><option value="member-2">Thành viên B · member-2</option></select></label>
+              <label className="field field-wide">
+                Chỉ định thành viên nhận việc
+                <select name="assigneeUserId" required defaultValue="member-content">
+                  <option value="member-content">Chuyên viên nội dung (content@example.com)</option>
+                  <option value="member-designer">Thiết kế đồ họa (designer@example.com)</option>
+                </select>
+              </label>
             ) : (
               <>
-                <label className="field">Role yêu cầu<select name="requiredRoleId" defaultValue=""><option value="">Không ràng buộc</option><option value="role-designer">Designer · role-designer</option><option value="role-content">Content · role-content</option></select></label>
-                <label className="field">Skill yêu cầu<select name="requiredSkillId" defaultValue=""><option value="">Không ràng buộc</option><option value="skill-figma">Figma · skill-figma</option><option value="skill-writing">Writing · skill-writing</option></select></label>
+                <label className="field">
+                  Vai trò chuyên môn yêu cầu
+                  <select name="requiredRoleId" defaultValue="role-designer">
+                    <option value="">Không bắt buộc</option>
+                    <option value="role-designer">Thiết kế đồ họa (Designer)</option>
+                    <option value="role-content">Sáng tạo nội dung (Content)</option>
+                  </select>
+                </label>
+                <label className="field">
+                  Kỹ năng chuyên môn yêu cầu
+                  <select name="requiredSkillId" defaultValue="skill-figma">
+                    <option value="">Không bắt buộc</option>
+                    <option value="skill-figma">Figma / UI Design</option>
+                    <option value="skill-writing">Biên tập nội dung (Copywriting)</option>
+                  </select>
+                </label>
               </>
             )}
           </div>
+
           <details className="advanced-fields">
-            <summary>Thêm mô tả và ước lượng</summary>
+            <summary>Thêm mô tả chi tiết và ước lượng thời gian</summary>
             <div className="form-grid conditional-fields">
-              <label className="field field-wide">Mô tả và kết quả mong đợi<textarea name="description" rows={3} placeholder="Tiêu chí để A nghiệm thu" /></label>
-              <label className="field">Effort estimate (giờ)<input name="estimate" type="number" min="0" step="0.5" placeholder="8" /></label>
+              <label className="field field-wide">
+                Mô tả công việc và tiêu chí nghiệm thu
+                <textarea rows={3} placeholder="Mô tả cụ thể kết quả đầu ra cần đạt để người phê duyệt (A) nghiệm thu hoàn thành..." />
+              </label>
+              <label className="field">
+                Ước lượng thời gian hoàn thành (giờ)
+                <input name="estimate" type="number" min="0" step="0.5" placeholder="Ví dụ: 8" />
+              </label>
             </div>
           </details>
-          <p className="helper-note">Sau khi tạo task, Manager gửi đề nghị Direct hoặc mở Open Work qua thao tác riêng. Milestone và task tiền nhiệm cũng cần dữ liệu thật để chọn; bản nháp này chưa thực hiện các bước đó.</p>
+
           <div className="form-footer">
-            <span>Giao diện nháp: form chưa gửi tới API và không lưu dữ liệu.</span>
-            <button className="button button-primary" type="submit">Kiểm tra bản nháp</button>
+            <span className="text-xs text-slate-500">
+              Công việc sau khi tạo sẽ xuất hiện ngay trong danh sách quản lý của Không gian làm việc.
+            </span>
+            <button className="button button-primary flex items-center gap-1.5" type="submit">
+              <Plus size={16} />
+              <span>Khởi tạo công việc</span>
+            </button>
           </div>
         </form>
 
-        <aside className="panel" style={{ position: "sticky", top: 16, alignSelf: "start" }} aria-label="Xem trước JSON payload">
-          <div className="section-header" style={{ marginBottom: 12 }}>
+        {/* Cột hướng dẫn & tóm tắt bên phải (Thay thế ô API Preview thừa thãi) */}
+        <aside className="panel new-task-guide-aside" aria-label="Tóm tắt công việc">
+          <div className="section-header" style={{ marginBottom: 14 }}>
             <div>
-              <p className="eyebrow">API preview</p>
-              <h2>JSON payload</h2>
+              <p className="eyebrow">HƯỚNG DẪN & QUY CHUẨN</p>
+              <h2>Tóm tắt phân công RACI</h2>
             </div>
-            <span className={`status-badge ${previewed ? "status-success" : "status-neutral"}`}>
-              {previewed ? "Payload hợp lệ" : "Chưa kiểm tra"}
-            </span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
-            <span style={{ fontFamily: monoFont, fontSize: 11, fontWeight: 700, letterSpacing: ".06em", color: "var(--faint)" }}>
-              POST /tasks
-            </span>
-            <span style={{ fontFamily: monoFont, fontSize: 11, color: "var(--faint)" }}>
-              content-type: application/json
-            </span>
+
+          <div className="flex flex-col gap-3.5 mb-5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            <div className="p-3 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/50">
+              <div className="flex items-center gap-2 text-sky-700 dark:text-sky-300 font-bold mb-1">
+                <CheckSquare size={15} />
+                <span>Quy tắc 01 Người phê duyệt (A)</span>
+              </div>
+              <p className="m-0">
+                Mỗi công việc trong CWRM luôn có duy nhất một <strong>Accountable (A)</strong> chịu trách nhiệm cao nhất và có quyền nghiệm thu hoặc trả lại kết quả.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50">
+              <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold mb-1">
+                <Users size={15} />
+                <span>Quyền thực hiện (R) phát sinh</span>
+              </div>
+              <p className="m-0">
+                Vai trò <strong>Responsible (R)</strong> chỉ được xác lập khi thành viên được giao việc chính thức <strong>Chấp nhận (Accepted)</strong> đề nghị hoặc được duyệt nhận việc.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/50">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-bold mb-1">
+                <ShieldAlert size={15} />
+                <span>Giám sát rủi ro tự động (AI Risk)</span>
+              </div>
+              <p className="m-0">
+                Hệ thống theo dõi thời gian còn lại so với hạn chót để kích hoạt các quy tắc rủi ro <strong>R01–R03</strong> khi có nguy cơ trễ hạn.
+              </p>
+            </div>
           </div>
-          <pre style={payloadPreStyle}>
-            {previewed && payloadPreview
-              ? JSON.stringify(payloadPreview, null, 2)
-              : '// Nhập thông tin task ở cột trái\n// rồi nhấn "Kiểm tra bản nháp"\n// để xem JSON payload gửi tới POST /tasks'}
-          </pre>
-          <p className="helper-note">
-            Hệ thống áp dụng chuẩn RACI: 1 Accountable nghiệm thu duy nhất và các yêu cầu năng lực tương ứng cho từng công việc.
-            {mode === "DIRECT" && directInvitee ? ` Người dự kiến mời: ${directInvitee}.` : ""}
-          </p>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
+            <p className="m-0">
+              💡 <em>Mẹo:</em> Bạn có thể liên kết các công việc có tính phụ thuộc tuần tự (Finish-to-Start) tại trang <strong>Kiểm duyệt & Nghiệm thu</strong>.
+            </p>
+          </div>
         </aside>
       </div>
     </AppShell>

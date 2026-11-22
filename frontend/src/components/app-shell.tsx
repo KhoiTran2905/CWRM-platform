@@ -18,6 +18,8 @@ import {
   Search,
   LogOut,
   ArrowLeftRight,
+  Menu,
+  X,
 } from "lucide-react";
 
 interface NavItem {
@@ -93,6 +95,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { account, workspace } = useAppContext();
   const { screen, team } = resolveScreenInfo(pathname);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setMobileMenuOpen(false);
+  }
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -128,20 +136,37 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-frame">
-      <aside className="sidebar">
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className={`sidebar-backdrop ${mobileMenuOpen ? "active" : ""}`}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside className={`sidebar ${mobileMenuOpen ? "sidebar-mobile-open" : ""}`}>
         {/* Brand Header */}
-        <Link href="/workspace" className="brand" aria-label="CWRM, về Bàn làm việc dự án">
-          <span className="brand-mark">
-            C<span className="brand-mark-dot" />
-          </span>
-          <div className="brand-text-block">
-            <strong>CWRM</strong>
-            <small>Hệ thống Điều hành</small>
-          </div>
-        </Link>
+        <div className="brand-header-row">
+          <Link href="/workspace" className="brand" aria-label="CWRM, về Bàn làm việc dự án" onClick={() => setMobileMenuOpen(false)}>
+            <span className="brand-mark">
+              C<span className="brand-mark-dot" />
+            </span>
+            <div className="brand-text-block">
+              <strong>CWRM</strong>
+              <small>Hệ thống Điều hành</small>
+            </div>
+          </Link>
+          <button
+            type="button"
+            className="mobile-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Đóng menu"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
         {/* Current Workspace Selector Chip */}
-        <Link href="/workspaces" className="workspace-chip" title="Nhấn để đổi Không gian làm việc">
+        <Link href="/workspaces" className="workspace-chip" title="Nhấn để đổi Không gian làm việc" onClick={() => setMobileMenuOpen(false)}>
           <div className="workspace-chip-icon">
             <FolderGit2 size={16} />
           </div>
@@ -170,6 +195,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                           href={item.href}
                           className={`nav-link ${active ? "nav-link-active" : ""}`}
                           aria-current={active ? "page" : undefined}
+                          onClick={() => setMobileMenuOpen(false)}
                         >
                           <span className="nav-link-icon">{item.icon(active)}</span>
                           <span className="nav-link-label">{item.label}</span>
@@ -211,17 +237,26 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="app-main">
         <header className="topbar">
           <div className="topbar-left">
+            <button
+              type="button"
+              className="mobile-hamburger-btn"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Mở menu điều hướng"
+            >
+              <Menu size={20} />
+            </button>
+
             <nav aria-label="Điều hướng phân cấp" className="breadcrumbs">
               <ol className="breadcrumb-list">
-                <li className="breadcrumb-item">
+                <li className="breadcrumb-item breadcrumb-home">
                   <Link href="/workspace" className="breadcrumb-link">
                     {workspace?.name ?? "Không gian làm việc"}
                   </Link>
                 </li>
-                <li className="breadcrumb-separator" aria-hidden="true">
+                <li className="breadcrumb-separator breadcrumb-hide-mobile" aria-hidden="true">
                   <ChevronRight size={13} className="text-slate-400" />
                 </li>
-                <li className="breadcrumb-item">
+                <li className="breadcrumb-item breadcrumb-hide-mobile">
                   <span className="breadcrumb-team">{team}</span>
                 </li>
                 <li className="breadcrumb-separator" aria-hidden="true">
@@ -251,7 +286,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <Link href="/workspaces" className="topbar-ws-switch" title="Chuyển đổi không gian làm việc">
               <ArrowLeftRight size={14} />
-              <span>Đổi Workspace</span>
+              <span className="ws-switch-label">Đổi Workspace</span>
             </Link>
 
             <ThemeToggle />

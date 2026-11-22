@@ -48,8 +48,12 @@ export default async function ReviewPage() {
           .ft-lock svg { width: 10px; height: 10px; flex-shrink: 0; }
           .ft-lock-open { color: var(--accent-text); border-color: var(--accent-border); background: var(--accent-soft); }
           .dependency-row { padding: 9px 12px; margin-top: 6px; }
-          @media (max-width: 900px) {
+          @media (max-width: 1024px) {
             .review-split { grid-template-columns: 1fr; }
+          }
+          @media (max-width: 640px) {
+            .ft-flow { grid-template-columns: 1fr; gap: 8px; }
+            .ft-link { display: none; }
           }
         `}</style>
         <PageHeading
@@ -61,7 +65,7 @@ export default async function ReviewPage() {
         <div className="review-split">
           <section className="panel review-panel" aria-labelledby="review-queue-heading">
             <div className="section-header">
-              <div><p className="eyebrow">Quyết định của A</p><h2 id="review-queue-heading">Hàng chờ Review ({awaitingReview.length})</h2></div>
+              <div><p className="eyebrow">Quyết định của A</p><h2 id="review-queue-heading">Hàng chờ nghiệm thu ({awaitingReview.length})</h2></div>
             </div>
             <div className="review-scroll-area">
               <TaskTable tasks={awaitingReview} />
@@ -80,7 +84,7 @@ export default async function ReviewPage() {
 
           <section className="panel review-panel" aria-labelledby="dependency-list-heading">
             <div className="section-header">
-              <div><p className="eyebrow">Finish-to-Start</p><h2 id="dependency-list-heading">Task phụ thuộc ({successors.length})</h2></div>
+              <div><p className="eyebrow">Finish-to-Start</p><h2 id="dependency-list-heading">Chuỗi công việc phụ thuộc ({successors.length})</h2></div>
             </div>
             <div className="review-scroll-area">
               <div className="ft-dependency-list">
@@ -91,8 +95,8 @@ export default async function ReviewPage() {
                     const predecessor = demoTasks.find((item) => item.id === task.predecessorId);
                     const unlocked = predecessor?.status === "Done";
                     const lockLabel = unlocked
-                      ? "Sẵn sàng Start"
-                      : `Chờ "${predecessor?.title ?? task.predecessorId}" Done`;
+                      ? "Sẵn sàng bắt đầu"
+                      : `Chờ "${predecessor?.title ?? task.predecessorId}" hoàn thành`;
                     return (
                       <div className={`ft-flow ${unlocked ? "ft-flow-open" : "ft-flow-locked"}`} key={task.id}>
                         <Link className="ft-node ft-node-pre" href={`/tasks/${predecessor?.id ?? task.predecessorId}`}>
@@ -112,7 +116,7 @@ export default async function ReviewPage() {
                           <strong>{task.title}</strong>
                           <span className="ft-node-meta">
                             <span className="ft-code">{task.id}</span>
-                            <StatusBadge value={unlocked ? "Được phép Start" : "Start bị khóa"} />
+                            <StatusBadge value={unlocked ? "Được phép bắt đầu" : "Bị khóa bắt đầu"} />
                           </span>
                           {!unlocked ? (
                             <span className="ft-lock">

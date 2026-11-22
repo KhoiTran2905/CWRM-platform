@@ -55,7 +55,7 @@ export function RiskAdvisorPanel({ task, snapshot }: RiskAdvisorPanelProps) {
               }}
               style={{ accentColor: "var(--danger)" }}
             />
-            Mô phỏng lỗi API 503 / Fallback
+            Mô phỏng lỗi AI (Fallback)
           </label>
           <button
             onClick={runDiagnosis}
@@ -69,7 +69,7 @@ export function RiskAdvisorPanel({ task, snapshot }: RiskAdvisorPanelProps) {
       </div>
 
       <p className="section-intro">
-        Mô hình AI đối chiếu dữ liệu snapshot và trích dẫn mã evidence (Human-in-the-Loop). Manager là người quyết định cuối cùng và chịu trách nhiệm ghi nhận lý do.
+        Mô hình AI đối chiếu dữ liệu snapshot và trích dẫn mã evidence (Human-in-the-Loop). Quản lý là người quyết định cuối cùng và chịu trách nhiệm ghi nhận lý do.
       </p>
 
       {loading && (
@@ -94,7 +94,7 @@ export function RiskAdvisorPanel({ task, snapshot }: RiskAdvisorPanelProps) {
             <span style={{ fontWeight: 800, fontSize: 14 }}>⚠️ LỖI KẾT NỐI AI ADVISOR (503 SERVICE UNAVAILABLE)</span>
           </div>
           <p style={{ fontSize: 13, color: "var(--danger)", margin: "0 0 10px", lineHeight: 1.5 }}>
-            Không thể gọi Gemini API hoặc dịch vụ AI phản hồi chậm. Hệ thống tự động chuyển sang chế độ <strong>Fallback kỹ thuật</strong> theo đặc tả CWRM-16 POC.
+            Không thể gọi Gemini API hoặc dịch vụ AI phản hồi chậm. Hệ thống tự động chuyển sang chế độ <strong>Fallback kỹ thuật</strong> theo đặc tả rủi ro.
           </p>
           <div style={{ padding: 12, background: "var(--card)", borderRadius: 6, border: "1px solid var(--border)" }}>
             <strong style={{ display: "block", fontSize: 12, marginBottom: 4, color: "var(--text)" }}>Bản ghi giải thích dự phòng (fallbackExplanation):</strong>
@@ -115,7 +115,7 @@ export function RiskAdvisorPanel({ task, snapshot }: RiskAdvisorPanelProps) {
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--accent-text)" }}>
                 ✨ NHẬN ĐỊNH CỦA AI ADVISOR
               </span>
-              <span className="count-label">Mô hình: Gemini 2.0 Flash POC</span>
+              <span className="count-label">Mô hình: Gemini AI Risk Engine</span>
             </div>
             <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", margin: "0 0 10px" }}>
               Task <strong className="td-code">{task.id}</strong> đang rơi vào trạng thái rủi ro{" "}

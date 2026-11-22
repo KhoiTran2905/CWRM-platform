@@ -91,7 +91,7 @@ export default async function OpenWorkPage() {
       <section className="panel panel-fill">
         <div className="section-header">
           <h2>Danh sách việc mở ({opportunities.length})</h2>
-          <span className="count-label">Chỉ hiển thị task To Do thuộc team của bạn</span>
+          <span className="count-label">Chỉ hiển thị công việc Chờ thực hiện thuộc đội ngũ của bạn</span>
         </div>
         <div className="scroll-container">
           <div className="card-grid" style={{ paddingRight: 4 }}>
@@ -110,22 +110,22 @@ export default async function OpenWorkPage() {
                 {item.requestStatus && (
                   <div className="badge-row" style={{ margin: "-2px 0 8px" }}>
                     <StatusBadge kind="requestStatus" value={item.requestStatus} />
-                    <span className="count-label" style={{ fontSize: 10.5 }}>Request đang ở trạng thái này</span>
+                    <span className="count-label" style={{ fontSize: 10.5 }}>Trạng thái yêu cầu nhận việc</span>
                   </div>
                 )}
                 <div className="requirement-row" style={{ fontSize: 11.5, gap: 10 }}>
-                  <span>Role: <strong>{item.requiredRole}</strong></span>
-                  <span>Skill: <strong>{item.requiredSkills?.join(", ")}</strong></span>
+                  <span>Vai trò: <strong>{item.requiredRole}</strong></span>
+                  <span>Kỹ năng: <strong>{item.requiredSkills?.join(", ")}</strong></span>
                 </div>
                 {item.missingRequirements.length === 0 ? (
                   <div className="eligibility success" style={{ padding: "8px 10px", fontSize: 11.5 }}>
                     <strong>Đủ điều kiện</strong>
                     <span>
                       {item.requestStatus === "Pending"
-                        ? "Request đang Pending; chờ Manager duyệt."
+                        ? "Yêu cầu đang chờ Trưởng nhóm phê duyệt."
                         : item.requestStatus === "Withdrawn"
-                        ? "Bạn đã rút request này."
-                        : "Đủ role/skill bắt buộc. Có thể gửi request."}
+                        ? "Bạn đã rút yêu cầu này."
+                        : "Đủ vai trò và kỹ năng yêu cầu. Có thể gửi yêu cầu nhận việc."}
                     </span>
                   </div>
                 ) : (
@@ -141,23 +141,23 @@ export default async function OpenWorkPage() {
                       className="button button-secondary"
                       style={{ background: "transparent", minHeight: 28, fontSize: 11.5, padding: "0 10px" }}
                       disabled
-                      title="Rút request Pending (chờ API)"
+                      title="Rút yêu cầu đã gửi"
                     >
-                      Rút request
+                      Rút yêu cầu
                     </button>
                   </div>
                 ) : item.requestStatus === "Withdrawn" ? (
                   <div className="button-row">
-                    <Link className="button button-secondary" href={`/tasks/${item.id}`} style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Xem task</Link>
-                    <button className="button button-primary" disabled title="Chờ API" style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Gửi lại request</button>
+                    <Link className="button button-secondary" href={`/tasks/${item.id}`} style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Xem chi tiết</Link>
+                    <button className="button button-primary" disabled style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Gửi lại yêu cầu</button>
                   </div>
                 ) : item.missingRequirements.length === 0 ? (
                   <div className="button-row">
-                    <Link className="button button-secondary" href={`/tasks/${item.id}`} style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Xem task</Link>
-                    <button className="button button-primary" disabled style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Gửi request</button>
+                    <Link className="button button-secondary" href={`/tasks/${item.id}`} style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Xem chi tiết</Link>
+                    <button className="button button-primary" disabled style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Gửi yêu cầu nhận việc</button>
                   </div>
                 ) : (
-                  <button className="button button-secondary" disabled style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Không thể gửi request</button>
+                  <button className="button button-secondary" disabled style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Không đủ điều kiện ứng tuyển</button>
                 )}
               </article>
             )))}

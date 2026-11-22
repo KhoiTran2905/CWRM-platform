@@ -111,8 +111,12 @@ export default function MyWorkPage() {
           gap: 10px;
           padding-right: 4px;
         }
-        @media (max-width: 860px) {
+        @media (max-width: 1024px) {
           .my-work-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+          .invitation-panel .button-row { flex-wrap: wrap; }
+          .invitation-panel .button-row .button { flex: 1 1 auto; }
         }
       `}</style>
       <PageHeading
@@ -129,7 +133,7 @@ export default function MyWorkPage() {
           <section className="panel" aria-labelledby="direct-invitation-heading">
             <div className="section-header">
               <div>
-                <p className="eyebrow">Direct invitation</p>
+                <p className="eyebrow">LỜI MỜI NHẬN VIỆC</p>
                 <h2 id="direct-invitation-heading">Lời mời trực tiếp đang chờ</h2>
               </div>
               {invitation && <StatusBadge value="Pending Acceptance" />}
@@ -147,10 +151,10 @@ export default function MyWorkPage() {
                     </span>
                   </div>
                   <h3 style={{ margin: "6px 0 8px", fontSize: 13 }}>{invitation.title}</h3>
-                  <p style={{ margin: "0 0 10px", fontSize: 12, color: "var(--muted)" }}>Task vẫn <strong>To Do</strong>. Nếu chấp nhận, bạn trở thành R; task chỉ bắt đầu khi điều kiện dependency cho phép.</p>
+                  <p style={{ margin: "0 0 10px", fontSize: 12, color: "var(--muted)" }}>Công việc đang ở trạng thái <strong>Chờ thực hiện</strong>. Nếu chấp nhận, bạn trở thành người thực hiện (R); công việc bắt đầu khi điều kiện tiền nhiệm cho phép.</p>
                   <label className="field" style={{ fontSize: 11.5, marginBottom: 10 }}>
-                    Lý do từ chối (bắt buộc khi Decline)
-                    <textarea rows={2} disabled placeholder="Nhập lý do để Manager có thể giao lại" style={{ fontSize: 12, padding: "6px 10px" }} />
+                    Lý do từ chối (bắt buộc khi Từ chối)
+                    <textarea rows={2} disabled placeholder="Nhập lý do để Trưởng nhóm có thể giao lại" style={{ fontSize: 12, padding: "6px 10px" }} />
                   </label>
                   <div className="button-row">
                     <Link className="button button-secondary" href={`/tasks/${invitation.id}`} style={{ minHeight: 28, fontSize: 11.5, padding: "0 10px" }}>Chi tiết</Link>
@@ -159,7 +163,7 @@ export default function MyWorkPage() {
                   </div>
                 </div>
               ) : (
-                <p className="helper-note" style={loadingNote}>Không có lời mời Direct nào đang chờ bạn phản hồi.</p>
+                <p className="helper-note" style={loadingNote}>Không có lời mời giao việc nào đang chờ bạn phản hồi.</p>
               )}
             </div>
           </section>
@@ -169,7 +173,7 @@ export default function MyWorkPage() {
           <section className="panel" aria-labelledby="my-tasks-heading">
             <div className="section-header">
               <div>
-                <p className="eyebrow">Assignment Accepted</p>
+                <p className="eyebrow">NHIỆM VỤ ĐÃ NHẬN</p>
                 <h2 id="my-tasks-heading">Công việc của tôi ({loaded ? assigned.length : "…"})</h2>
               </div>
               <div className="button-row">
@@ -180,7 +184,7 @@ export default function MyWorkPage() {
               {!loaded ? (
                 <p className="helper-note" style={loadingNote}>Đang tải công việc…</p>
               ) : assigned.length === 0 ? (
-                <p className="helper-note" style={loadingNote}>Bạn chưa nhận task nào. Ghé trang việc mở để gửi request.</p>
+                <p className="helper-note" style={loadingNote}>Bạn chưa nhận công việc nào. Ghé trang việc mở để gửi yêu cầu.</p>
               ) : (
                 assigned.map((task) => {
                   const draft = draftFor(task);
@@ -194,9 +198,9 @@ export default function MyWorkPage() {
                       <p style={{ margin: "4px 0 8px", fontSize: 11.5, color: "var(--muted)" }}>A: {task.accountable} · {task.deadlineLabel}</p>
                       <div className="progress-header" style={{ fontSize: 11.5 }}><span>Tiến độ</span><strong>{draft.progress}%</strong></div>
                       <div className="progress-track" style={{ height: 6 }}><span style={{ width: `${draft.progress}%` }} /></div>
-                      {task.openBlockers > 0 && <p className="warning-line" style={{ margin: "6px 0 0", fontSize: 11 }}>{task.openBlockers} blocker đang mở — chưa thể gửi Review.</p>}
-                      {task.predecessorId && list.find((item) => item.id === task.predecessorId)?.status !== "Done" && <p className="warning-line" style={{ margin: "6px 0 0", fontSize: 11 }}>Chờ {task.predecessorId} Done — chưa thể Start.</p>}
-                      {task.status === "To Do" && <button className="button button-primary" disabled title="Chờ API và kiểm tra dependency" style={{ minHeight: 28, fontSize: 11.5, marginTop: 8 }}>Start</button>}
+                      {task.openBlockers > 0 && <p className="warning-line" style={{ margin: "6px 0 0", fontSize: 11 }}>{task.openBlockers} trở ngại đang mở — chưa thể gửi nghiệm thu.</p>}
+                      {task.predecessorId && list.find((item) => item.id === task.predecessorId)?.status !== "Done" && <p className="warning-line" style={{ margin: "6px 0 0", fontSize: 11 }}>Chờ {task.predecessorId} hoàn thành — chưa thể bắt đầu.</p>}
+                      {task.status === "To Do" && <button className="button button-primary" disabled title="Chờ kiểm tra điều kiện liên hoàn" style={{ minHeight: 28, fontSize: 11.5, marginTop: 8 }}>Bắt đầu làm việc</button>}
                       {task.status === "In Progress" && (
                         <div style={clusterStyle}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
@@ -207,7 +211,7 @@ export default function MyWorkPage() {
                           </div>
                           <div style={sliderRowStyle}>
                             <label className="field" style={{ gap: 2, fontSize: 11 }}>
-                              Progress (%)
+                              Tiến độ (%)
                               <input
                                 type="number"
                                 min={0}
@@ -230,7 +234,7 @@ export default function MyWorkPage() {
                           </div>
                           <div style={sliderRowStyle}>
                             <label className="field" style={{ gap: 2, fontSize: 11 }}>
-                              Effort (giờ)
+                              Thời gian thực hiện (giờ)
                               <input
                                 type="number"
                                 min={0}

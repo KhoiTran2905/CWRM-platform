@@ -40,29 +40,109 @@ Dự án được thực hiện bởi nhóm 4 sinh viên:
 
 ---
 
-## 🚀 4. Hướng Dẫn Chạy Nhanh (Frontend)
+## 🚀 4. Hướng Dẫn Cài Đặt & Chạy Hệ Thống
 
-### Yêu cầu môi trường:
-* **Node.js:** phiên bản `20.9.0` trở lên.
-* **Trình quản lý gói:** `npm`.
+Hệ thống bao gồm hai thành phần chính: **Backend API (NestJS + PostgreSQL)** và **Frontend Client (Next.js)**. Bạn có thể khởi chạy toàn bộ luồng Web–API–DB theo các bước dưới đây.
 
-### Các bước cài đặt:
-```bash
-# 1. Đi vào thư mục giao diện
+### 4.1. Danh Sách Tài Khoản Mẫu (Dữ Liệu Seed Của Khôi)
+
+Sau khi chạy lệnh `npm run db:seed` ở backend, cơ sở dữ liệu sẽ được nạp sẵn 3 tài khoản người dùng mẫu và 1 không gian làm việc thử nghiệm:
+
+| STT | Vai trò | Tên hiển thị | Email đăng nhập | Mật khẩu mặc định |
+| :---: | :--- | :--- | :--- | :--- |
+| **1** | **Trưởng nhóm (Manager)** | Trưởng nhóm Marketing | `manager@example.com` | `change_me_demo_only` |
+| **2** | **Thành viên (Member - Content)** | Chuyên viên nội dung | `content@example.com` | `change_me_demo_only` |
+| **3** | **Thành viên (Member - Designer)** | Thiết kế đồ họa | `designer@example.com` | `change_me_demo_only` |
+
+* **Workspace mẫu:** `Marketing Demo` (đã liên kết sẵn 3 tài khoản trên với vai trò tương ứng và 3 task mẫu).
+* **Mật khẩu:** Quy định bởi biến môi trường `SEED_DEMO_PASSWORD` trong `backend/.env` (giá trị mặc định trong `.env.example` là `change_me_demo_only`).
+* *Lưu ý:* Bạn cũng có thể bấm **"Đăng ký ngay"** trên giao diện Web để tạo tài khoản cá nhân mới hoàn toàn độc lập.
+
+---
+
+### 4.2. Bước 1: Khởi Chạy Backend API (Port 3001)
+
+Yêu cầu: Đã cài đặt **Docker Desktop** (để chạy PostgreSQL) và **Node.js 20+**.
+
+```powershell
+# 1. Di chuyển vào thư mục backend
+cd backend
+
+# 2. Tạo file cấu hình môi trường từ mẫu
+Copy-Item .env.example .env
+# (Trên macOS/Linux: cp .env.example .env)
+
+# 3. Khởi động cơ sở dữ liệu PostgreSQL 17 qua Docker
+docker compose up -d
+
+# 4. Cài đặt các gói phụ thuộc
+npm ci
+
+# 5. Triển khai schema cơ sở dữ liệu (Migration)
+npm run db:deploy
+
+# 6. Nạp dữ liệu mẫu (Seed 3 tài khoản và Workspace demo)
+npm run db:seed
+
+# 7. Khởi động máy chủ backend NestJS
+npm run start:dev
+```
+Backend API sẽ hoạt động tại: **`http://localhost:3001`**  
+Tài liệu Swagger API: **`http://localhost:3001/api/docs`**
+
+---
+
+### 4.3. Bước 2: Khởi Chạy Frontend Web Client (Port 3000)
+
+Mở một cửa sổ Terminal mới:
+
+```powershell
+# 1. Di chuyển vào thư mục frontend
 cd frontend
 
-# 2. Cài đặt thư viện
-npm install
+# 2. Tạo file cấu hình môi trường
+Copy-Item .env.example .env.local
+# (Trên macOS/Linux: cp .env.example .env.local)
 
-# 3. Khởi chạy máy chủ phát triển
+# 3. Cài đặt các gói phụ thuộc
+npm ci
+
+# 4. Khởi chạy máy chủ giao diện Next.js
 npm run dev
 ```
 
-* Ứng dụng sẽ hoạt động tại: **`http://localhost:3000`**
-* Kiểm tra chất lượng mã nguồn & Build:
-  ```bash
-  npm run lint
-  npm run build
+Frontend Web Client sẽ hoạt động tại: **`http://localhost:3000`**
+
+---
+
+### 4.4. Bước 3: Đăng Nhập & Trải Nghiệm Hệ Thống
+
+1. Mở trình duyệt và truy cập: **`http://localhost:3000`** (hệ thống sẽ tự động chuyển hướng đến `/login`).
+2. Sử dụng tài khoản mẫu:
+   - **Email:** `manager@example.com`
+   - **Mật khẩu:** `change_me_demo_only`
+3. Sau khi đăng nhập thành công, chọn Workspace **Marketing Demo** để vào Bàn làm việc điều hành dự án.
+4. Để đăng xuất, bấm vào nút **Đăng xuất** ở góc dưới thanh Sidebar hoặc trên thanh Header.
+
+---
+
+### 4.5. Kiểm Tra Chất Lượng Mã Nguồn & Tích Hợp
+
+* **Kiểm tra Frontend:**
+  ```powershell
+  cd frontend
+  npm run lint       # Kiểm tra quy chuẩn mã nguồn
+  npx tsc --noEmit   # Kiểm tra kiểu TypeScript
+  npm run build      # Biên dịch tối ưu hóa Next.js (21/21 routes)
+  node scripts/smoke-auth-workspace.mjs  # Chạy test smoke luồng Auth/Workspace
+  ```
+* **Kiểm tra Backend:**
+  ```powershell
+  cd backend
+  npm run lint       # Kiểm tra ESLint
+  npm run typecheck  # Kiểm tra kiểu TypeScript
+  npm run test       # Chạy Unit Tests (33/33 tests đạt)
+  npm run test:e2e   # Chạy E2E Tests (4/4 tests đạt)
   ```
 
 ---

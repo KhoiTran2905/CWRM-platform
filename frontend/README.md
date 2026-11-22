@@ -2,11 +2,31 @@
 
 Next.js UI cho CWRM-27. `/register`, `/login`, `/workspaces`, `/workspace` dùng Auth/Workspace API thật. Các màn `/manager`, `/tasks`, `/tasks/new`, `/tasks/[id]`, `/my-work`, `/open-work`, `/review`, `/risk` vẫn minh họa dữ liệu và chưa ghi nghiệp vụ qua API. [Đối chiếu CWRM-14](../docs/ux/CWRM-14_Acceptance_Criteria_Verification.md) ghi rõ phần đã kiểm tra và bằng chứng còn thiếu.
 
+## Hướng dẫn cài đặt và chạy Frontend
+
 ```powershell
+# 1. Cài đặt các gói phụ thuộc
 npm ci
+
+# 2. Tạo file cấu hình môi trường
 Copy-Item .env.example .env.local
+
+# 3. Chạy giao diện ở môi trường phát triển
 npm run dev
 ```
+
+### Tài khoản mẫu đăng nhập (Dữ liệu seed Backend của Khôi)
+
+Khi chạy cùng backend có kết nối cơ sở dữ liệu đã seed (`npm run db:seed`), bạn có thể sử dụng các tài khoản mẫu sau để đăng nhập:
+
+| Vai trò | Tên hiển thị | Email đăng nhập | Mật khẩu mặc định |
+| :--- | :--- | :--- | :--- |
+| **Trưởng nhóm (Manager)** | Trưởng nhóm Marketing | `manager@example.com` | `change_me_demo_only` |
+| **Thành viên (Member - Content)** | Chuyên viên nội dung | `content@example.com` | `change_me_demo_only` |
+| **Thành viên (Member - Designer)** | Thiết kế đồ họa | `designer@example.com` | `change_me_demo_only` |
+
+* **Workspace mẫu:** Chọn **Marketing Demo** sau khi đăng nhập để truy cập bàn làm việc với các task mẫu.
+* Bạn cũng có thể bấm **Đăng ký ngay** trên form đăng nhập để tạo tài khoản mới độc lập.
 
 Chạy backend trên `main` tại `http://localhost:3001`, rồi mở http://localhost:3000 (chuyển đến `/workspaces` và yêu cầu đăng nhập). `CWRM_API_BASE_URL` chỉ được đọc phía server, gồm tiền tố `/api/v1`. Đăng ký rồi đăng nhập; tạo hoặc chọn Workspace. Token nằm trong cookie HttpOnly (`cwrm_access`), không trả về JavaScript trình duyệt. Khi phiên hết hạn, ứng dụng chuyển về `/login`. Dùng `npm run lint` và `npm run build` để kiểm tra. Scripts dùng Webpack vì môi trường Windows hiện tại chặn SWC native của Turbopack.
 

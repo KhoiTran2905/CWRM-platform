@@ -107,8 +107,12 @@ export default async function ManagerPage() {
         .risk-row { padding: 6px 10px; margin-top: 4px; gap: 8px; }
         .risk-row-main strong { font-size: 12.5px; }
         .risk-row-main span, .risk-row-evidence { font-size: 10.5px; }
-        @media (max-width: 900px) {
+        @media (max-width: 1024px) {
           .mgr-page-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+          .mgr-review-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+          .mgr-review-action { width: 100%; text-align: center; }
         }
       `}</style>
       <PageHeading
