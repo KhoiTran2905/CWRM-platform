@@ -55,7 +55,7 @@ try {
   if (response.status === 307) assert.match(response.headers.get("location"), /\/login/);
   else {
     const page = await response.text();
-    assert.match(page, /login\?expired=1/);
+    assert.match(page, /NEXT_REDIRECT;replace;\/login;307/);
     assert.doesNotMatch(page, /Workspace của bạn/);
   }
 
