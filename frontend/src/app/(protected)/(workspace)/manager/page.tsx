@@ -5,6 +5,13 @@ import { TaskTable } from "@/components/task-table";
 import { listTasks } from "@/lib/api/client";
 import { requireWorkspace } from "@/lib/auth/server";
 import { isDemoWorkspace } from "@/lib/demo-data";
+import {
+  FolderKanban,
+  Clock,
+  AlertCircle,
+  ShieldAlert,
+  Plus,
+} from "lucide-react";
 
 export default async function ManagerPage() {
   const workspace = await requireWorkspace();
@@ -108,29 +115,59 @@ export default async function ManagerPage() {
         eyebrow="TỔNG QUAN ĐIỀU HÀNH"
         title="Bàn làm việc Trưởng nhóm"
         description="Ưu tiên theo dõi công việc có rủi ro và xử lý các kết quả đang chờ nghiệm thu."
-        action={<Link className="button button-primary" href="/tasks/new">+ Tạo công việc</Link>}
+        action={
+          <Link className="button button-primary flex items-center gap-1.5" href="/tasks/new">
+            <Plus size={15} />
+            <span>Tạo công việc</span>
+          </Link>
+        }
       />
 
-      <section className="mgr-metrics" aria-label="Chỉ số tổng quan">
-        <div className="metric-card">
-          <span>Tổng công việc</span>
-          <strong>{demoTasks.length}</strong>
-          <small>Toàn bộ dự án</small>
+      <section className="modern-kpi-grid" aria-label="Chỉ số tổng quan">
+        <div className="kpi-card">
+          <div className="kpi-icon-wrapper bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
+            <FolderKanban size={20} />
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">Tổng công việc</span>
+            <strong className="kpi-number">{demoTasks.length}</strong>
+            <small className="kpi-hint">Toàn bộ dự án</small>
+          </div>
         </div>
-        <div className="metric-card">
-          <span>Đang thực hiện</span>
-          <strong>{inProgress.length}</strong>
-          <small>Đang triển khai</small>
+
+        <div className="kpi-card">
+          <div className="kpi-icon-wrapper bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+            <Clock size={20} />
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">Đang thực hiện</span>
+            <strong className="kpi-number text-blue-600 dark:text-blue-400">{inProgress.length}</strong>
+            <small className="kpi-hint">Đang triển khai</small>
+          </div>
         </div>
-        <div className="metric-card">
-          <span>Đang nghẽn</span>
-          <strong>{blocked.length}</strong>
-          <small>Cần gỡ blocker</small>
+
+        <div className="kpi-card">
+          <div className="kpi-icon-wrapper bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+            <AlertCircle size={20} />
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">Đang nghẽn</span>
+            <strong className={`kpi-number ${blocked.length ? "text-amber-600 dark:text-amber-400" : ""}`}>
+              {blocked.length}
+            </strong>
+            <small className="kpi-hint">Cần gỡ blocker</small>
+          </div>
         </div>
-        <div className="metric-card metric-alert">
-          <span>Rủi ro Cao</span>
-          <strong>{highRisk.length}</strong>
-          <small>R03 · AI Alert</small>
+
+        <div className="kpi-card kpi-card-danger">
+          <div className="kpi-icon-wrapper bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+            <ShieldAlert size={20} />
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">Rủi ro Cao (AI)</span>
+            <strong className="kpi-number text-rose-600 dark:text-rose-400">{highRisk.length}</strong>
+            <small className="kpi-hint">Cần quyết định can thiệp</small>
+          </div>
         </div>
       </section>
 
