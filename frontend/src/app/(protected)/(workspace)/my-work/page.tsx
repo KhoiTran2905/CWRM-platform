@@ -35,7 +35,7 @@ const sliderRowStyle: CSSProperties = {
 const loadingNote: CSSProperties = { margin: 0 };
 
 export default function MyWorkPage() {
-  const { workspace } = useAppContext();
+  const { account, workspace } = useAppContext();
   const isDemo = isDemoWorkspace(workspace?.id);
   const [tasks, setTasks] = useState<TaskSummary[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, UpdateDraft>>({});
@@ -124,9 +124,14 @@ export default function MyWorkPage() {
         title="Biết việc nào mình đã nhận"
         description="Lời mời nhận việc và task đang thực hiện được tách riêng, để Accepted không bị hiểu là Task Status."
       />
-      <div className="profile-badge" style={{ marginBottom: 10, padding: "6px 12px", fontSize: "12px", flexShrink: 0 }}>
-        <span>Tài khoản:</span> <strong>{demoDirectMemberProfile.name}</strong> · <span>Đội ngũ:</span> <strong>{demoDirectMemberProfile.teams.join(", ")}</strong> · <span>Vai trò:</span> <strong>{demoDirectMemberProfile.role}</strong>
+      <div className="profile-badge" style={{ marginBottom: 6, padding: "6px 12px", fontSize: "12px", flexShrink: 0 }}>
+        <span>Tài khoản đăng nhập:</span> <strong>{account?.displayName ?? "Người dùng"}</strong> · <span>{account?.email ?? ""}</span>
       </div>
+      {isDemo && (
+        <p className="helper-note" style={{ margin: "0 0 10px", fontSize: 11.5, flexShrink: 0 }}>
+          Danh sách lọc theo hồ sơ minh họa <strong>{demoDirectMemberProfile.name}</strong> ({demoDirectMemberProfile.teams.join(", ")} · {demoDirectMemberProfile.role}) — dữ liệu mẫu, chưa tích hợp Member API nên không phải danh tính của bạn.
+        </p>
+      )}
 
       <div className="my-work-grid">
         <div className="my-work-col">

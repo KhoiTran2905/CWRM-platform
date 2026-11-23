@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import {
@@ -8,6 +8,7 @@ import {
   Users,
   ShieldAlert,
   Plus,
+  Info,
 } from "lucide-react";
 
 const priorityOptions = [
@@ -27,12 +28,6 @@ export default function NewTaskPage() {
   const [priority, setPriority] = useState<(typeof priorityOptions)[number]["code"]>("MEDIUM");
   const [deadlineType, setDeadlineType] = useState<(typeof deadlineTypeOptions)[number]["code"]>("FLEXIBLE");
   const [taskTitle, setTaskTitle] = useState("");
-  const [created, setCreated] = useState(false);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setCreated(true);
-  }
 
   return (
     <AppShell>
@@ -49,15 +44,13 @@ export default function NewTaskPage() {
 
       <div className="two-column-layout">
         {/* Form bên trái */}
-        <form className="panel task-form" onSubmit={handleSubmit}>
-          {created && (
-            <div className="auth-alert alert-notice mb-4" role="status">
-              <CheckSquare size={16} />
-              <span>
-                Đã ghi nhận thông tin bản nháp công việc: <strong>{taskTitle || "Công việc mới"}</strong>. (Hệ thống ở Sprint 2 đang liên kết dữ liệu giao việc qua API Auth/Workspace).
-              </span>
-            </div>
-          )}
+        <form className="panel task-form" onSubmit={(event) => event.preventDefault()}>
+          <div className="auth-alert alert-notice mb-4" role="status">
+            <Info size={16} />
+            <span>
+              Giao diện minh họa: chưa có API tạo Task trong Sprint 2 nên biểu mẫu <strong>chưa lưu dữ liệu</strong>. Nút khởi tạo bị khóa cho đến khi WP-017 cung cấp API Task.
+            </span>
+          </div>
 
           <div className="form-section-heading">
             <span className="step-number">1</span>
@@ -234,9 +227,14 @@ export default function NewTaskPage() {
 
           <div className="form-footer">
             <span className="text-xs text-slate-500">
-              Công việc sau khi tạo sẽ xuất hiện ngay trong danh sách quản lý của Không gian làm việc.
+              Chức năng tạo Task chưa kết nối API: biểu mẫu chỉ minh họa quy trình RACI, dữ liệu nhập không được gửi đi hay lưu lại.
             </span>
-            <button className="button button-primary flex items-center gap-1.5" type="submit">
+            <button
+              className="button button-primary flex items-center gap-1.5"
+              type="submit"
+              disabled
+              title="Chưa có API tạo Task trong Sprint 2 — thao tác lưu bị khóa, chưa lưu dữ liệu"
+            >
               <Plus size={16} />
               <span>Khởi tạo công việc</span>
             </button>

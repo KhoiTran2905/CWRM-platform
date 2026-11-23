@@ -3,7 +3,7 @@ import { AppShell, PageHeading } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { demoMemberProfile, isDemoWorkspace, missingOpenWorkRequirements } from "@/lib/demo-data";
 import { listTasks } from "@/lib/api/client";
-import { requireWorkspace } from "@/lib/auth/server";
+import { requireAccount, requireWorkspace } from "@/lib/auth/server";
 
 const monoFont = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace';
 
@@ -51,7 +51,7 @@ function CapacitySlots({
 }
 
 export default async function OpenWorkPage() {
-  const workspace = await requireWorkspace();
+  const [workspace, account] = await Promise.all([requireWorkspace(), requireAccount()]);
   const isDemo = isDemoWorkspace(workspace.id);
   const tasks = isDemo ? await listTasks() : [];
   const opportunities = tasks
@@ -85,13 +85,18 @@ export default async function OpenWorkPage() {
         title="Tìm việc phù hợp năng lực"
         description="Member thuộc team xem việc mở, kiểm tra Role/Skill rồi gửi request; Manager quyết định duyệt khi còn chỗ."
       />
-      <div className="profile-badge" style={{ marginBottom: 10, padding: "6px 12px", fontSize: "12px", flexShrink: 0 }}>
-        <span>Tài khoản:</span> <strong>{demoMemberProfile.name}</strong> · <span>Đội ngũ:</span> <strong>{demoMemberProfile.teams.join(", ")}</strong> · <span>Vai trò:</span> <strong>{demoMemberProfile.role}</strong> ({demoMemberProfile.skills.join(", ")})
+      <div className="profile-badge" style={{ marginBottom: 6, padding: "6px 12px", fontSize: "12px", flexShrink: 0 }}>
+        <span>Tài khoản đăng nhập:</span> <strong>{account.displayName}</strong> · <span>{account.email}</span>
       </div>
+      {isDemo && (
+        <p className="helper-note" style={{ margin: "0 0 10px", fontSize: 11.5, flexShrink: 0 }}>
+          Điều kiện nhận việc đang tính theo hồ sơ minh họa <strong>{demoMemberProfile.name}</strong> ({demoMemberProfile.teams.join(", ")} · {demoMemberProfile.role} · {demoMemberProfile.skills.join(", ")}) — dữ liệu mẫu, chưa tích hợp Member API nên không phải danh tính của bạn.
+        </p>
+      )}
       <section className="panel panel-fill">
         <div className="section-header">
           <h2>Danh sách việc mở ({opportunities.length})</h2>
-          <span className="count-label">Chỉ hiển thị công việc Chờ thực hiện thuộc đội ngũ của bạn</span>
+          <span className="count-label">Chỉ hiển thị công việc Chờ thực hiện phù hợp hồ sơ minh họa</span>
         </div>
         <div className="scroll-container">
           <div className="card-grid" style={{ paddingRight: 4 }}>

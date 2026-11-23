@@ -218,8 +218,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="user-profile-name" title={account?.displayName ?? "Người dùng"}>
               {account?.displayName ?? "Người dùng"}
             </span>
-            <span className="user-profile-role">
-              Manager
+            <span className="user-profile-role" title={account?.email}>
+              {account?.email ?? "Chưa có thông tin tài khoản"}
             </span>
           </div>
           <button

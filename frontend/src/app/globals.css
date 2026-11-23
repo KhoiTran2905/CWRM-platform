@@ -474,6 +474,9 @@ button:disabled { cursor: not-allowed; }
   font-weight: 600;
   color: #38bdf8;
   letter-spacing: .02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .user-logout-btn {
   display: grid;
