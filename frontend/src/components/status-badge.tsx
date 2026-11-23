@@ -46,70 +46,72 @@ interface BadgeConfig {
 }
 
 const taskStatusMap: Record<string, BadgeConfig> = {
-  TO_DO: { label: "To Do", tone: "neutral" },
-  "To Do": { label: "To Do", tone: "neutral" },
-  IN_PROGRESS: { label: "In Progress", tone: "info" },
-  "In Progress": { label: "In Progress", tone: "info" },
-  BLOCKED: { label: "Blocked", tone: "danger" },
-  Blocked: { label: "Blocked", tone: "danger" },
-  REVIEW: { label: "Review", tone: "warning" },
-  Review: { label: "Review", tone: "warning" },
-  DONE: { label: "Done", tone: "success" },
-  Done: { label: "Done", tone: "success" },
+  TO_DO: { label: "Chờ thực hiện", tone: "neutral" },
+  "To Do": { label: "Chờ thực hiện", tone: "neutral" },
+  IN_PROGRESS: { label: "Đang làm", tone: "info" },
+  "In Progress": { label: "Đang làm", tone: "info" },
+  BLOCKED: { label: "Bị nghẽn", tone: "danger" },
+  Blocked: { label: "Bị nghẽn", tone: "danger" },
+  REVIEW: { label: "Chờ duyệt", tone: "warning" },
+  Review: { label: "Chờ duyệt", tone: "warning" },
+  DONE: { label: "Hoàn thành", tone: "success" },
+  Done: { label: "Hoàn thành", tone: "success" },
 };
 
 const assignmentStatusMap: Record<string, BadgeConfig> = {
-  PENDING_ACCEPTANCE: { label: "Pending Acceptance", tone: "warning" },
-  "Pending Acceptance": { label: "Pending Acceptance", tone: "warning" },
-  ACCEPTED: { label: "Accepted", tone: "success" },
-  Accepted: { label: "Accepted", tone: "success" },
-  DECLINED: { label: "Declined", tone: "neutral" },
-  Declined: { label: "Declined", tone: "neutral" },
+  PENDING_ACCEPTANCE: { label: "Chờ nhận việc", tone: "warning" },
+  "Pending Acceptance": { label: "Chờ nhận việc", tone: "warning" },
+  ACCEPTED: { label: "Đã nhận việc", tone: "success" },
+  Accepted: { label: "Đã nhận việc", tone: "success" },
+  DECLINED: { label: "Đã từ chối", tone: "neutral" },
+  Declined: { label: "Đã từ chối", tone: "neutral" },
 };
 
 const requestStatusMap: Record<string, BadgeConfig> = {
-  PENDING: { label: "Pending", tone: "warning" },
-  Pending: { label: "Pending", tone: "warning" },
-  APPROVED: { label: "Approved", tone: "success" },
-  Approved: { label: "Approved", tone: "success" },
-  REJECTED: { label: "Rejected", tone: "danger" },
-  Rejected: { label: "Rejected", tone: "danger" },
-  WITHDRAWN: { label: "Withdrawn", tone: "neutral" },
-  Withdrawn: { label: "Withdrawn", tone: "neutral" },
+  PENDING: { label: "Chờ duyệt", tone: "warning" },
+  Pending: { label: "Chờ duyệt", tone: "warning" },
+  APPROVED: { label: "Đã duyệt", tone: "success" },
+  Approved: { label: "Đã duyệt", tone: "success" },
+  REJECTED: { label: "Từ chối", tone: "danger" },
+  Rejected: { label: "Từ chối", tone: "danger" },
+  WITHDRAWN: { label: "Đã rút lại", tone: "neutral" },
+  Withdrawn: { label: "Đã rút lại", tone: "neutral" },
 };
 
 const riskLevelMap: Record<string, BadgeConfig> = {
-  LOW: { label: "Low", tone: "success" },
-  Low: { label: "Low", tone: "success" },
-  MEDIUM: { label: "Medium", tone: "warning" },
-  Medium: { label: "Medium", tone: "warning" },
-  HIGH: { label: "High", tone: "danger" },
-  High: { label: "High", tone: "danger" },
+  LOW: { label: "Rủi ro thấp", tone: "success" },
+  Low: { label: "Rủi ro thấp", tone: "success" },
+  MEDIUM: { label: "Rủi ro trung bình", tone: "warning" },
+  Medium: { label: "Rủi ro trung bình", tone: "warning" },
+  HIGH: { label: "Rủi ro cao", tone: "danger" },
+  High: { label: "Rủi ro cao", tone: "danger" },
 };
 
 const priorityMap: Record<string, BadgeConfig> = {
-  LOW: { label: "Low", tone: "neutral" },
-  Low: { label: "Low", tone: "neutral" },
-  MEDIUM: { label: "Medium", tone: "info" },
-  Medium: { label: "Medium", tone: "info" },
-  HIGH: { label: "High", tone: "warning" },
-  High: { label: "High", tone: "warning" },
-  CRITICAL: { label: "Critical", tone: "danger" },
-  Critical: { label: "Critical", tone: "danger" },
+  LOW: { label: "Thấp", tone: "neutral" },
+  Low: { label: "Thấp", tone: "neutral" },
+  MEDIUM: { label: "Trung bình", tone: "info" },
+  Medium: { label: "Trung bình", tone: "info" },
+  HIGH: { label: "Cao", tone: "warning" },
+  High: { label: "Cao", tone: "warning" },
+  CRITICAL: { label: "Khẩn cấp", tone: "danger" },
+  Critical: { label: "Khẩn cấp", tone: "danger" },
 };
 
 const assignmentModeMap: Record<string, BadgeConfig> = {
-  DIRECT: { label: "Direct", tone: "info" },
-  Direct: { label: "Direct", tone: "info" },
-  OPEN_WORK: { label: "Open Work", tone: "violet" },
-  "Open Work": { label: "Open Work", tone: "violet" },
+  DIRECT: { label: "Giao trực tiếp", tone: "info" },
+  Direct: { label: "Giao trực tiếp", tone: "info" },
+  OPEN_WORK: { label: "Nhận việc tự do", tone: "violet" },
+  "Open Work": { label: "Nhận việc tự do", tone: "violet" },
 };
 
 const actionGuardMap: Record<string, BadgeConfig> = {
-  CAN_START: { label: "Được phép Start", tone: "success" },
-  "Được phép Start": { label: "Được phép Start", tone: "success" },
-  START_BLOCKED: { label: "Start bị khóa", tone: "warning" },
-  "Start bị khóa": { label: "Start bị khóa", tone: "warning" },
+  CAN_START: { label: "Được phép bắt đầu", tone: "success" },
+  "Được phép Start": { label: "Được phép bắt đầu", tone: "success" },
+  "Được phép bắt đầu": { label: "Được phép bắt đầu", tone: "success" },
+  START_BLOCKED: { label: "Bị khóa bắt đầu", tone: "warning" },
+  "Start bị khóa": { label: "Bị khóa bắt đầu", tone: "warning" },
+  "Bị khóa bắt đầu": { label: "Bị khóa bắt đầu", tone: "warning" },
 };
 
 const kindMaps: Record<BadgeKind, Record<string, BadgeConfig>> = {

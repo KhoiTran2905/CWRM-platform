@@ -4,22 +4,75 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useAppContext } from "@/components/app-context";
+import {
+  LayoutDashboard,
+  CheckSquare,
+  ClipboardCheck,
+  ShieldAlert,
+  UserCheck,
+  Inbox,
+  FolderGit2,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  LogOut,
+  ArrowLeftRight,
+  Menu,
+  X,
+} from "lucide-react";
 
 interface NavItem {
   href: string;
   label: string;
   group: "Manager" | "Member";
-  number: string;
   team: string;
+  icon: (active: boolean) => ReactNode;
 }
 
 const navigation: NavItem[] = [
-  { href: "/manager", label: "Tổng quan điều hành", group: "Manager", number: "01", team: "Ban Điều phối" },
-  { href: "/tasks", label: "Quản lý công việc", group: "Manager", number: "02", team: "Ban Điều phối" },
-  { href: "/review", label: "Kiểm duyệt & Nghiệm thu", group: "Manager", number: "03", team: "Ban Điều phối" },
-  { href: "/risk", label: "Kiểm soát rủi ro", group: "Manager", number: "04", team: "Ban Điều phối" },
-  { href: "/my-work", label: "Nhiệm vụ trực tiếp", group: "Member", number: "01", team: "Đội ngũ Thực thi" },
-  { href: "/open-work", label: "Hàng đợi nhận việc", group: "Member", number: "02", team: "Đội ngũ Thực thi" },
+  {
+    href: "/manager",
+    label: "Tổng quan điều hành",
+    group: "Manager",
+    team: "Ban Điều phối",
+    icon: (active) => <LayoutDashboard size={18} strokeWidth={active ? 2.2 : 1.8} />,
+  },
+  {
+    href: "/tasks",
+    label: "Quản lý công việc",
+    group: "Manager",
+    team: "Ban Điều phối",
+    icon: (active) => <CheckSquare size={18} strokeWidth={active ? 2.2 : 1.8} />,
+  },
+  {
+    href: "/review",
+    label: "Kiểm duyệt & Nghiệm thu",
+    group: "Manager",
+    team: "Ban Điều phối",
+    icon: (active) => <ClipboardCheck size={18} strokeWidth={active ? 2.2 : 1.8} />,
+  },
+  {
+    href: "/risk",
+    label: "Kiểm soát rủi ro AI",
+    group: "Manager",
+    team: "Ban Điều phối",
+    icon: (active) => <ShieldAlert size={18} strokeWidth={active ? 2.2 : 1.8} />,
+  },
+  {
+    href: "/my-work",
+    label: "Nhiệm vụ trực tiếp",
+    group: "Member",
+    team: "Đội ngũ Thực thi",
+    icon: (active) => <UserCheck size={18} strokeWidth={active ? 2.2 : 1.8} />,
+  },
+  {
+    href: "/open-work",
+    label: "Hàng đợi nhận việc",
+    group: "Member",
+    team: "Đội ngũ Thực thi",
+    icon: (active) => <Inbox size={18} strokeWidth={active ? 2.2 : 1.8} />,
+  },
 ];
 
 function resolveScreenInfo(pathname: string): { screen: string; team: string } {
@@ -39,8 +92,15 @@ function resolveScreenInfo(pathname: string): { screen: string; team: string } {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { account, workspace } = useAppContext();
   const { screen, team } = resolveScreenInfo(pathname);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setMobileMenuOpen(false);
+  }
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -66,149 +126,173 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    router.replace("/login");
+    router.refresh();
+  }
+
+  const userInitial = (account?.displayName ?? "U").trim().charAt(0).toUpperCase();
+
   return (
     <div className="app-frame">
-      <aside className="sidebar">
-        <Link href="/manager" className="brand" aria-label="CWRM, về trang tổng quan điều hành">
-          <span className="brand-mark">
-            C<span className="brand-mark-dot" />
-          </span>
-          <span>
-            <strong>CWRM</strong>
-            <small>Hệ thống Điều hành</small>
-          </span>
-        </Link>
-        <div className="workspace-chip">
-          <span className="workspace-dot" />
-          <span>
-            <small>WORKSPACE ĐIỀU HÀNH</small>
-            <strong>CWRM Enterprise Core</strong>
-          </span>
-          <span className="workspace-caret" aria-hidden="true">⌄</span>
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className={`sidebar-backdrop ${mobileMenuOpen ? "active" : ""}`}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside className={`sidebar ${mobileMenuOpen ? "sidebar-mobile-open" : ""}`}>
+        {/* Brand Header */}
+        <div className="brand-header-row">
+          <Link href="/workspace" className="brand" aria-label="CWRM, về Bàn làm việc dự án" onClick={() => setMobileMenuOpen(false)}>
+            <span className="brand-mark">
+              C<span className="brand-mark-dot" />
+            </span>
+            <div className="brand-text-block">
+              <strong>CWRM</strong>
+              <small>Hệ thống Điều hành</small>
+            </div>
+          </Link>
+          <button
+            type="button"
+            className="mobile-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Đóng menu"
+          >
+            <X size={18} />
+          </button>
         </div>
-        <nav aria-label="Điều hướng chính">
+
+        {/* Current Workspace Selector Chip */}
+        <Link href="/workspaces" className="workspace-chip" title="Nhấn để đổi Không gian làm việc" onClick={() => setMobileMenuOpen(false)}>
+          <div className="workspace-chip-icon">
+            <FolderGit2 size={16} />
+          </div>
+          <div className="workspace-chip-info">
+            <small>DỰ ÁN HIỆN TẠI</small>
+            <strong>{workspace?.name ?? "Chưa chọn Workspace"}</strong>
+          </div>
+          <ChevronDown size={14} className="workspace-caret" aria-hidden="true" />
+        </Link>
+
+        {/* Sidebar Nav */}
+        <nav aria-label="Điều hướng chính" className="sidebar-nav">
           {(["Manager", "Member"] as const).map((group) => (
             <div className="nav-group" key={group}>
-              <p className="nav-group-label">
-                {group === "Manager" ? "ĐIỀU HÀNH DỰ ÁN" : "TÁC NGHIỆP TRỰC TIẾP"} <span>{group}</span>
+              <p className="nav-group-title">
+                {group === "Manager" ? "ĐIỀU HÀNH DỰ ÁN" : "TÁC NGHIỆP TRỰC TIẾP"}
               </p>
-              {navigation
-                .filter((item) => item.group === group)
-                .map((item) => {
-                  const active =
-                    pathname === item.href ||
-                    (item.href === "/tasks" && pathname.startsWith("/tasks"));
-                  return (
-                    <Link
-                      href={item.href}
-                      key={item.href}
-                      className={`nav-link ${active ? "active" : ""}`}
-                      aria-current={active ? "page" : undefined}
-                    >
-                      <span className="nav-number font-mono tabular-nums" aria-hidden="true">
-                        {item.number}
-                      </span>
-                      {item.label}
-                    </Link>
-                  );
-                })}
+              <ul className="nav-list">
+                {navigation
+                  .filter((item) => item.group === group)
+                  .map((item) => {
+                    const active = pathname === item.href;
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className={`nav-link ${active ? "nav-link-active" : ""}`}
+                          aria-current={active ? "page" : undefined}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <span className="nav-link-icon">{item.icon(active)}</span>
+                          <span className="nav-link-label">{item.label}</span>
+                          {active && <span className="nav-active-pill" />}
+                        </Link>
+                      </li>
+                    );
+                  })}
+              </ul>
             </div>
           ))}
         </nav>
-        <div className="sidebar-note">
-          <strong>Môi trường Điều hành</strong>
-          <span>Phân quyền thực thi cấp dự án. Đồng bộ trạng thái tức thời.</span>
+
+        {/* Bottom User Profile Section */}
+        <div className="user-profile-tile">
+          <div className="user-profile-avatar" aria-hidden="true">
+            {userInitial}
+          </div>
+          <div className="user-profile-details">
+            <span className="user-profile-name" title={account?.displayName ?? "Người dùng"}>
+              {account?.displayName ?? "Người dùng"}
+            </span>
+            <span className="user-profile-role" title={account?.email}>
+              {account?.email ?? "Chưa có thông tin tài khoản"}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="user-logout-btn"
+            onClick={handleLogout}
+            title="Đăng xuất khỏi hệ thống"
+            aria-label="Đăng xuất"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </aside>
+
       <div className="app-main">
         <header className="topbar">
           <div className="topbar-left">
+            <button
+              type="button"
+              className="mobile-hamburger-btn"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Mở menu điều hướng"
+            >
+              <Menu size={20} />
+            </button>
+
             <nav aria-label="Điều hướng phân cấp" className="breadcrumbs">
               <ol className="breadcrumb-list">
-                <li className="breadcrumb-item">
-                  <Link href="/manager" className="breadcrumb-link">
-                    Không gian CWRM
+                <li className="breadcrumb-item breadcrumb-home">
+                  <Link href="/workspace" className="breadcrumb-link">
+                    {workspace?.name ?? "Không gian làm việc"}
                   </Link>
                 </li>
-                <li className="breadcrumb-separator" aria-hidden="true">/</li>
-                <li className="breadcrumb-item">
+                <li className="breadcrumb-separator breadcrumb-hide-mobile" aria-hidden="true">
+                  <ChevronRight size={13} className="text-slate-400" />
+                </li>
+                <li className="breadcrumb-item breadcrumb-hide-mobile">
                   <span className="breadcrumb-team">{team}</span>
                 </li>
-                <li className="breadcrumb-separator" aria-hidden="true">/</li>
+                <li className="breadcrumb-separator" aria-hidden="true">
+                  <ChevronRight size={13} className="text-slate-400" />
+                </li>
                 <li className="breadcrumb-item breadcrumb-current" aria-current="page">
                   <span className="breadcrumb-current-text">{screen}</span>
                 </li>
               </ol>
             </nav>
           </div>
+
           <div className="topbar-tools">
-            <form onSubmit={handleSearchSubmit} className="topbar-search">
-              <svg
-                className="topbar-search-icon"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
-              </svg>
+            <form onSubmit={handleSearchSubmit} className="topbar-search" role="search">
+              <Search size={15} className="topbar-search-icon" aria-hidden="true" />
               <input
                 ref={searchInputRef}
-                type="text"
+                type="search"
+                className="topbar-search-input"
+                placeholder="Tìm mã task (VD: TASK-103)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm mã task (VD: TASK-103)..."
-                className="topbar-search-input"
-                aria-label="Tìm kiếm hoặc điều lệnh nhanh"
+                aria-label="Tìm kiếm công việc"
               />
-              <kbd className="topbar-search-kbd font-mono tabular-nums" title="Nhấn Ctrl+K để tìm">Ctrl+K</kbd>
+              <kbd className="topbar-search-kbd">Ctrl+K</kbd>
             </form>
-            <Link
-              href="/login"
-              className="user-profile-chip"
-              title="Đổi vai trò hoặc đăng xuất tại /login"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "3px 9px",
-                borderRadius: 6,
-                border: "1px solid var(--border)",
-                background: "var(--card-soft)",
-                color: "var(--text)",
-                fontSize: 11.5,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              <span
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: "50%",
-                  background: "var(--primary)",
-                  color: "#fff",
-                  display: "grid",
-                  placeItems: "center",
-                  fontSize: 9.5,
-                  fontWeight: 800,
-                }}
-              >
-                {pathname.startsWith("/my-work") || pathname.startsWith("/open-work") ? "M" : "A"}
-              </span>
-              <span>
-                {pathname.startsWith("/my-work") || pathname.startsWith("/open-work")
-                  ? "Nguyễn Bình (Member)"
-                  : "Lê Đình Bảo (Manager)"}
-              </span>
+
+            <Link href="/workspaces" className="topbar-ws-switch" title="Chuyển đổi không gian làm việc">
+              <ArrowLeftRight size={14} />
+              <span className="ws-switch-label">Đổi Workspace</span>
             </Link>
-            <span className="demo-pill">
-              <span className="demo-pill-dot" /> Trực tuyến
-            </span>
+
             <ThemeToggle />
           </div>
         </header>
+
         <main className="page-content">{children}</main>
       </div>
     </div>
@@ -221,19 +305,19 @@ export function PageHeading({
   description,
   action,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   action?: ReactNode;
 }) {
   return (
     <div className="page-heading">
       <div>
-        <p className="eyebrow">{eyebrow}</p>
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h1>{title}</h1>
-        <p className="page-description">{description}</p>
+        {description && <p className="page-description">{description}</p>}
       </div>
-      {action}
+      {action && <div className="page-heading-action">{action}</div>}
     </div>
   );
 }

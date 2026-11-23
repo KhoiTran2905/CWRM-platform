@@ -38,6 +38,10 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
           .raci-r { background: #0f766e; }
           .raci-c, .raci-i { background: var(--card-muted); color: var(--muted); }
           .raci-scope { color: var(--muted); font-size: 11.5px; }
+          @media (max-width: 640px) {
+            .task-detail-page .button-row { flex-wrap: wrap; }
+            .task-detail-page .button-row .button { flex: 1 1 auto; }
+          }
         `}</style>
         <PageHeading
           eyebrow={`${task.team} / ${task.id}`}
@@ -47,40 +51,40 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         />
         <div className="two-column-layout">
           <section className="panel">
-            <div className="section-header"><h2>Thông tin công việc</h2><div className="status-summary"><span>Task Status</span><StatusBadge value={task.status} /></div></div>
+            <div className="section-header"><h2>Thông tin công việc</h2><div className="status-summary"><span>Trạng thái công việc</span><StatusBadge value={task.status} /></div></div>
             <div className="detail-grid">
               <div><span>Mã task</span><strong className="td-code">{task.id}</strong></div>
               <div><span>Hình thức</span><StatusBadge value={task.assignmentMode} /></div>
-              <div><span>Priority</span><StatusBadge kind="priority" value={task.priority} /></div>
+              <div><span>Mức độ ưu tiên</span><StatusBadge kind="priority" value={task.priority} /></div>
               <div><span>A chịu trách nhiệm</span><strong>{task.accountable}</strong></div>
-              <div><span>R thực hiện</span><strong>{responsibleName ?? "Chưa có R Accepted"}</strong></div>
+              <div><span>R thực hiện</span><strong>{responsibleName ?? "Chưa có người nhận việc (R)"}</strong></div>
               {task.assignmentMode === "Direct" ? (
-                <div><span>Assignment Status</span>{task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : <strong>Chưa gửi lời mời</strong>}</div>
+                <div><span>Trạng thái giao việc</span>{task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : <strong>Chưa gửi lời mời</strong>}</div>
               ) : (
                 <>
-                  <div><span>Request Status</span>{task.requestStatus ? <StatusBadge value={task.requestStatus} /> : <strong>Chưa có request</strong>}</div>
-                  <div><span>Assignment Status</span>{task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : <strong>Chưa có R Accepted</strong>}</div>
+                  <div><span>Trạng thái yêu cầu</span>{task.requestStatus ? <StatusBadge value={task.requestStatus} /> : <strong>Chưa có yêu cầu</strong>}</div>
+                  <div><span>Trạng thái giao việc</span>{task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : <strong>Chưa có người nhận việc (R)</strong>}</div>
                 </>
               )}
-              <div><span>Deadline</span><strong>{task.deadlineLabel}</strong></div>
-              <div><span>Blocker mở</span><strong>{task.openBlockers}</strong></div>
+              <div><span>Hạn hoàn thành</span><strong>{task.deadlineLabel}</strong></div>
+              <div><span>Trở ngại đang mở</span><strong>{task.openBlockers}</strong></div>
               {predecessor && <div><span>Phụ thuộc</span><Link className="text-link" href={`/tasks/${predecessor.id}`}><span className="td-code">{predecessor.id}</span> · {predecessor.title} · {predecessor.status}</Link></div>}
             </div>
             <div className="divider" />
-            <div className="progress-header"><span>Progress</span><strong>{task.progress}%</strong></div>
+            <div className="progress-header"><span>Tiến độ thực tế</span><strong>{task.progress}%</strong></div>
             <div className="progress-track"><span style={{ width: `${task.progress}%` }} /></div>
-            <p className="helper-note">Accepted không tự chuyển task sang In Progress. Progress 100% không tự chuyển task sang Done.</p>
+            <p className="helper-note">Đã nhận việc không tự chuyển trạng thái sang Đang làm. Tiến độ 100% không tự chuyển trạng thái sang Hoàn thành.</p>
           </section>
           <section className="panel">
             <div className="section-header"><h2>Rủi ro và hành động</h2><StatusBadge value={task.riskLevel} /></div>
-            <p className="page-description">Risk được tính từ dữ liệu công việc. Manager không nhập Risk Score thủ công.</p>
+            <p className="page-description">Rủi ro được tính từ dữ liệu công việc. Quản lý không nhập Risk Score thủ công.</p>
             {demoRiskSnapshot ? (
-              <Link href={`/risk?taskId=${task.id}`} className="button button-primary" style={{ marginTop: 22 }}>Xem evidence & chẩn đoán</Link>
+              <Link href={`/risk?taskId=${task.id}`} className="button button-primary" style={{ marginTop: 22 }}>Xem bằng chứng & chẩn đoán rủi ro</Link>
             ) : (
-              <p className="helper-note">Task này chưa có snapshot risk chi tiết.</p>
+              <p className="helper-note">Công việc này chưa có snapshot rủi ro chi tiết.</p>
             )}
             <div className="divider" />
-            <p className="helper-note">Risk Level là kết quả của Risk Engine. Blocked là Task Status; hai dữ liệu không thay thế nhau.</p>
+            <p className="helper-note">Mức rủi ro là kết quả của Risk Engine. Bị nghẽn là trạng thái công việc; hai thông tin không thay thế nhau.</p>
           </section>
         </div>
 
@@ -102,14 +106,14 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               <tbody>
                 <tr>
                   <td><span className="raci-role raci-r">R</span></td>
-                  <td><strong>{responsibleName ?? "Chưa có R Accepted"}</strong></td>
+                  <td><strong>{responsibleName ?? "Chưa có người nhận việc (R)"}</strong></td>
                   <td><span className="raci-scope">Thực hiện công việc và gửi kết quả</span></td>
                   <td>{task.assignmentStatus ? <StatusBadge kind="assignmentStatus" value={task.assignmentStatus} /> : <span className="muted">Chưa gán</span>}</td>
                 </tr>
                 <tr>
                   <td><span className="raci-role raci-a">A</span></td>
                   <td><strong>{task.accountable}</strong></td>
-                  <td><span className="raci-scope">Nghiệm thu, quyết định Done hoặc trả lại</span></td>
+                  <td><span className="raci-scope">Nghiệm thu, quyết định Hoàn thành hoặc yêu cầu sửa đổi</span></td>
                   <td><span className="status-badge status-info">Duy nhất 1 A</span></td>
                 </tr>
                 <tr>
@@ -122,12 +126,12 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
                   <td><span className="raci-role raci-i">I</span></td>
                   <td><strong>{task.team}</strong></td>
                   <td><span className="raci-scope">Nhận thông báo tiến độ</span></td>
-                  <td><span className="status-badge status-neutral">Theo team</span></td>
+                  <td><span className="status-badge status-neutral">Theo đội ngũ</span></td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <p className="helper-note">A là người nghiệm thu duy nhất; R là người thực hiện. C/I trong bản xem trước chỉ minh họa phạm vi, chưa ghi dữ liệu thật.</p>
+          <p className="helper-note">A là người nghiệm thu duy nhất; R là người trực tiếp thực hiện nhiệm vụ.</p>
         </section>
 
         <section className="panel section-gap" aria-labelledby="assignment-heading">
@@ -137,84 +141,82 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
           </div>
           {task.assignmentMode === "Direct" ? (
             <div className="flow-stage-grid">
-              <div className="flow-stage-card"><span>Người được đề nghị</span><strong>{task.assignee ?? "Chưa chọn"}</strong><small>Chỉ Member trong team mới có thể phản hồi.</small></div>
-              <div className="flow-stage-card"><span>Trạng thái lời mời</span>{task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : <strong>Chưa gửi</strong>}<small>{task.assignmentStatus === "Accepted" ? "Accepted tạo R; không tự Start task." : "Chưa Accepted thì chưa tạo R."}</small></div>
-              <div className="flow-stage-card"><span>Người thực hiện R</span><strong>{responsibleName ?? "Chưa có R"}</strong><small>Mỗi task vẫn có đúng một A: {task.accountable}.</small></div>
+              <div className="flow-stage-card"><span>Người được đề nghị</span><strong>{task.assignee ?? "Chưa chọn"}</strong><small>Chỉ thành viên trong nhóm mới có thể phản hồi.</small></div>
+              <div className="flow-stage-card"><span>Trạng thái lời mời</span>{task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : <strong>Chưa gửi</strong>}<small>{task.assignmentStatus === "Accepted" ? "Đã nhận việc xác lập vai trò R; không tự bắt đầu công việc." : "Chưa nhận việc thì chưa tạo vai trò R."}</small></div>
+              <div className="flow-stage-card"><span>Người thực hiện (R)</span><strong>{responsibleName ?? "Chưa có người nhận"}</strong><small>Mỗi công việc luôn có duy nhất một A: {task.accountable}.</small></div>
             </div>
           ) : (
             <div className="flow-stage-grid">
-              <div className="flow-stage-card"><span>Điều kiện ứng tuyển</span><strong>{task.requiredRole ?? "Không yêu cầu role"} · {task.requiredSkills?.join(", ") ?? "Không yêu cầu skill"}</strong><small>Số vị trí: {task.slots ?? 1}</small></div>
-              <div className="flow-stage-card"><span>Request của Member</span>{task.requestStatus ? <StatusBadge value={task.requestStatus} /> : <strong>Chưa có request</strong>}<small>{task.requestStatus === "Approved" ? "Manager đã duyệt request." : task.requestStatus === "Pending" ? "Pending chưa tạo Assignment Accepted hoặc R." : "Chưa có Member đủ điều kiện gửi request."}</small></div>
-              <div className="flow-stage-card"><span>Assignment / R</span><strong>{responsibleName ?? "Chưa có R"}</strong><small>{task.assignmentStatus === "Accepted" ? "Approved đã tạo Assignment Accepted." : "Chỉ Approved khi còn chỗ mới tạo R."}</small></div>
+              <div className="flow-stage-card"><span>Điều kiện ứng tuyển</span><strong>{task.requiredRole ?? "Không yêu cầu vai trò"} · {task.requiredSkills?.join(", ") ?? "Không yêu cầu kỹ năng"}</strong><small>Số vị trí: {task.slots ?? 1}</small></div>
+              <div className="flow-stage-card"><span>Yêu cầu của thành viên</span>{task.requestStatus ? <StatusBadge value={task.requestStatus} /> : <strong>Chưa có yêu cầu</strong>}<small>{task.requestStatus === "Approved" ? "Quản lý đã duyệt yêu cầu." : task.requestStatus === "Pending" ? "Đang chờ duyệt; chưa tạo vai trò R." : "Chưa có thành viên đủ điều kiện gửi yêu cầu."}</small></div>
+              <div className="flow-stage-card"><span>Phân công thực hiện (R)</span><strong>{responsibleName ?? "Chưa có người nhận"}</strong><small>{task.assignmentStatus === "Accepted" ? "Đã duyệt và xác lập vai trò R." : "Chỉ duyệt khi còn vị trí trống mới tạo vai trò R."}</small></div>
             </div>
           )}
-          <p className="helper-note">Các trạng thái và quyền trong phần này là mock UI; thao tác thật cần backend kiểm tra lại điều kiện và ghi audit.</p>
           <div className="divider" />
           <div className="section-header"><h3>Danh sách theo từng người</h3><span className="count-label">Cần {requiredPeople} · đã giữ {reservedPeople} · còn {Math.max(0, requiredPeople - reservedPeople)}</span></div>
           {assignments.map((item) => (
             <div className="dependency-row" key={item.id}>
-              <div><strong>{item.userName}</strong><p>Assignment · {item.reason ? `Lý do: ${item.reason}` : "Chưa có lý do"}</p></div>
+              <div><strong>{item.userName}</strong><p>Giao việc trực tiếp · {item.reason ? `Lý do: ${item.reason}` : "Chưa có lý do"}</p></div>
               <div className="button-row"><StatusBadge kind="assignmentStatus" value={item.status} /><button className="button button-secondary" disabled>Kết thúc + lý do</button></div>
             </div>
           ))}
           {requests.map((item) => (
             <div className="dependency-row" key={item.id}>
-              <div><strong>{item.userName}</strong><p>Open Work request · {item.reason ? `Lý do: ${item.reason}` : "Chưa có lý do"}</p></div>
+              <div><strong>{item.userName}</strong><p>Yêu cầu nhận việc tự do · {item.reason ? `Lý do: ${item.reason}` : "Chưa có lý do"}</p></div>
               <div className="button-row"><StatusBadge kind="requestStatus" value={item.status} /><button className="button button-primary" disabled>Duyệt</button><button className="button button-secondary" disabled>Từ chối + lý do</button></div>
             </div>
           ))}
-          {assignments.length === 0 && requests.length === 0 && <p className="helper-note">Chưa có đề nghị, request hoặc assignment.</p>}
+          {assignments.length === 0 && requests.length === 0 && <p className="helper-note">Chưa có đề nghị, yêu cầu hoặc phân công nào.</p>}
           {task.assignmentMode === "Direct" ? (
             <div className="form-grid section-gap">
               <label className="field">Lý do khi từ chối, đóng hoặc kết thúc<input disabled placeholder="Bắt buộc khi thực hiện thao tác" /></label>
-              <div className="button-row"><button className="button button-secondary" disabled>Gửi đề nghị Direct</button><button className="button button-secondary" disabled>Đóng đề nghị Pending</button></div>
+              <div className="button-row"><button className="button button-secondary" disabled>Gửi đề nghị trực tiếp</button><button className="button button-secondary" disabled>Đóng đề nghị đang chờ</button></div>
             </div>
           ) : (
             <div className="form-grid section-gap">
-              <label className="field">Lý do khi từ chối request hoặc đóng nhận việc<input disabled placeholder="Bắt buộc khi thực hiện thao tác" /></label>
-              <div className="button-row"><button className="button button-secondary" disabled>Đóng nhận request Open Work</button></div>
+              <label className="field">Lý do khi từ chối yêu cầu hoặc đóng nhận việc<input disabled placeholder="Bắt buộc khi thực hiện thao tác" /></label>
+              <div className="button-row"><button className="button button-secondary" disabled>Đóng nhận việc tự do</button></div>
             </div>
           )}
-          <p className="helper-note">Manager kiểm tra lại role/skill, số chỗ và phiên bản task khi duyệt. A là người nghiệm thu, không phải quyền duyệt request mặc định.</p>
+          <p className="helper-note">Quản lý kiểm tra lại vai trò, kỹ năng và số vị trí còn trống khi phê duyệt. A là người nghiệm thu, không phải quyền duyệt yêu cầu mặc định.</p>
         </section>
         {waitingForDependency && predecessor && (
           <section className="panel section-gap state-panel" aria-labelledby="dependency-heading">
-            <div><p className="eyebrow">Finish-to-Start</p><h2 id="dependency-heading">Chưa thể bắt đầu task</h2><p>Task tiền nhiệm <Link className="text-link" href={`/tasks/${predecessor.id}`}><span className="td-code">{predecessor.id}</span></Link> đang ở trạng thái <strong>{predecessor.status}</strong>. Chỉ khi tiền nhiệm được A duyệt Done thì task này mới được phép Start; hệ thống không tự bắt đầu thay Member.</p></div>
-            <button className="button button-secondary" disabled>Start bị khóa</button>
+            <div><p className="eyebrow">Chuỗi phụ thuộc liên hoàn (Finish-to-Start)</p><h2 id="dependency-heading">Chưa thể bắt đầu công việc</h2><p>Công việc tiền nhiệm <Link className="text-link" href={`/tasks/${predecessor.id}`}><span className="td-code">{predecessor.id}</span></Link> đang ở trạng thái <strong>{predecessor.status}</strong>. Chỉ khi tiền nhiệm được A nghiệm thu Hoàn thành thì công việc này mới được phép bắt đầu; hệ thống không tự bắt đầu thay thành viên.</p></div>
+            <button className="button button-secondary" disabled>Chưa thể bắt đầu</button>
           </section>
         )}
         {task.status === "Blocked" && (
           <section className="panel section-gap state-panel" aria-labelledby="blocker-heading">
-            <div><p className="eyebrow">Blocker đang mở</p><h2 id="blocker-heading">Giải quyết trở ngại trước khi gửi Review</h2><p>Task có {task.openBlockers} blocker mở. Member có thể cập nhật tiến độ và báo vấn đề; Manager theo dõi evidence, can thiệp có lý do và hệ thống đánh giá lại risk.</p></div>
-            <button className="button button-secondary" disabled>Gửi Review bị khóa</button>
+            <div><p className="eyebrow">Trở ngại đang mở</p><h2 id="blocker-heading">Giải quyết trở ngại trước khi gửi Nghiệm thu</h2><p>Công việc có {task.openBlockers} trở ngại đang mở. Thành viên có thể cập nhật tiến độ và báo cáo vấn đề; Quản lý theo dõi bằng chứng và hỗ trợ giải phóng trở ngại.</p></div>
+            <button className="button button-secondary" disabled>Chưa thể gửi nghiệm thu</button>
           </section>
         )}
         {task.status === "In Progress" && (
           <section className="panel section-gap state-panel" aria-labelledby="submit-review-heading">
             <div>
-              <p className="eyebrow">Member / Gửi nghiệm thu</p>
-              <h2 id="submit-review-heading">{reviewReady ? "Đủ điều kiện gửi Review" : "Chưa đủ điều kiện gửi Review"}</h2>
-              <p>Progress: <strong>{task.progress}%</strong> (cần 100%) · Blocker mở: <strong>{task.openBlockers}</strong> (cần 0). Khi R gửi Review, A mới xem xét và quyết định Done hoặc trả lại có lý do.</p>
+              <p className="eyebrow">Thành viên / Gửi nghiệm thu</p>
+              <h2 id="submit-review-heading">{reviewReady ? "Đủ điều kiện gửi Nghiệm thu" : "Chưa đủ điều kiện gửi Nghiệm thu"}</h2>
+              <p>Tiến độ: <strong>{task.progress}%</strong> (cần 100%) · Trở ngại mở: <strong>{task.openBlockers}</strong> (cần 0). Khi R gửi Nghiệm thu, A mới xem xét và quyết định Hoàn thành hoặc yêu cầu sửa đổi.</p>
             </div>
             <div className="form-grid">
               <label className="field">Kết quả dạng văn bản<textarea rows={3} disabled placeholder="Mô tả kết quả đã hoàn thành" /></label>
               <label className="field">Hoặc liên kết kết quả<input type="url" disabled placeholder="https://..." /></label>
-              <div className="action-with-note"><button className="button button-primary" disabled>Gửi Review</button><small>{reviewReady ? "Chờ API để gửi" : "Cần hoàn tất điều kiện"}</small></div>
+              <div className="action-with-note"><button className="button button-primary" disabled>Gửi nghiệm thu</button><small>{reviewReady ? "Sẵn sàng gửi nghiệm thu" : "Cần hoàn tất điều kiện"}</small></div>
             </div>
           </section>
         )}
         {task.status === "Review" && (
           <section className="panel section-gap state-panel" aria-labelledby="review-heading">
-            <div><p className="eyebrow">Nghiệm thu bởi A</p><h2 id="review-heading">Đã nộp kết quả, chờ quyết định</h2><p>R đã gửi Review khi đạt {task.progress}% và không còn blocker. A là {task.accountable}; A có thể duyệt Done hoặc trả về In Progress kèm lý do. Progress 100% không tự chuyển Done.</p></div>
+            <div><p className="eyebrow">Nghiệm thu bởi Người phê duyệt (A)</p><h2 id="review-heading">Đã nộp kết quả, chờ quyết định</h2><p>R đã gửi Nghiệm thu khi đạt {task.progress}% và không còn trở ngại. Người phê duyệt (A) là {task.accountable}; A có thể duyệt Hoàn thành hoặc trả về kèm lý do.</p></div>
             <div className="form-grid">
               <div><strong>Kết quả R đã nộp</strong><p>{task.reviewResultText ?? "Không có mô tả văn bản"}</p>{task.reviewResultUrl && <a className="text-link" href={task.reviewResultUrl}>Mở liên kết kết quả</a>}</div>
-              <label className="field">Lý do trả lại<input disabled placeholder="Bắt buộc khi trả lại" /></label>
-              <label className="field">Progress mới (0–99)<input type="number" min="0" max="99" disabled placeholder="Ví dụ: 80" /></label>
-              <div className="button-row"><button className="button button-primary" disabled>Duyệt Done</button><button className="button button-secondary" disabled>Trả lại</button></div>
+              <label className="field">Lý do yêu cầu sửa đổi<input disabled placeholder="Bắt buộc khi yêu cầu sửa đổi" /></label>
+              <label className="field">Tiến độ cập nhật mới (0–99)<input type="number" min="0" max="99" disabled placeholder="Ví dụ: 80" /></label>
+              <div className="button-row"><button className="button button-primary" disabled>Nghiệm thu Đạt (Done)</button><button className="button button-secondary" disabled>Yêu cầu sửa đổi</button></div>
             </div>
           </section>
         )}
-        <p className="helper-note">Các nút nghiệp vụ đang khóa vì chưa có API; bản xem trước không ghi thay đổi vào dữ liệu nhóm.</p>
       </div>
     </AppShell>
   );

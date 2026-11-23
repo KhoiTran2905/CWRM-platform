@@ -6,6 +6,7 @@ Desktop.ini
 # Trình soạn thảo và công cụ
 .idea/
 .vscode/
+.agents/
 *.swp
 *.swo
 

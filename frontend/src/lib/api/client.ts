@@ -2,6 +2,7 @@ import { demoRiskSnapshot, demoTasks, type RiskSnapshot, type TaskSummary } from
 
 /** Một đầu mối dữ liệu cho UI. Không đặt token trong biến NEXT_PUBLIC hoặc dữ liệu mẫu. */
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
+const taskApiEnabled = process.env.NEXT_PUBLIC_TASK_API_ENABLED === "true";
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -79,12 +80,12 @@ function taskArray(body: unknown): ApiTask[] {
 }
 
 export async function listTasks(token?: string): Promise<TaskSummary[]> {
-  if (!baseUrl) return demoTasks;
+  if (!baseUrl || !taskApiEnabled) return demoTasks;
   return taskArray(await request<unknown>("/tasks", token)).map(normalizeTask);
 }
 
 export async function getTask(id: string, token?: string): Promise<TaskSummary | undefined> {
-  if (!baseUrl) return demoTasks.find((task) => task.id === id);
+  if (!baseUrl || !taskApiEnabled) return demoTasks.find((task) => task.id === id);
   try {
     const body = await request<ApiTask>(`/tasks/${encodeURIComponent(id)}`, token);
     return normalizeTask(body);
@@ -95,7 +96,7 @@ export async function getTask(id: string, token?: string): Promise<TaskSummary |
 }
 
 export async function getRiskSnapshot(taskId: string, token?: string): Promise<RiskSnapshot | undefined> {
-  if (!baseUrl) return demoRiskSnapshot.taskId === taskId ? demoRiskSnapshot : undefined;
+  if (!baseUrl || !taskApiEnabled) return demoRiskSnapshot.taskId === taskId ? demoRiskSnapshot : undefined;
   try {
     const current = await request<{ snapshot?: RiskSnapshot; isCurrent: boolean; evaluationError?: string | null }>(`/tasks/${encodeURIComponent(taskId)}/risk-snapshots/current`, token);
     if (!current.snapshot) return undefined;
@@ -110,4 +111,4 @@ export async function getRiskSnapshot(taskId: string, token?: string): Promise<R
   }
 }
 
-export const usingDemoData = !baseUrl;
+export const usingDemoData = !baseUrl || !taskApiEnabled;

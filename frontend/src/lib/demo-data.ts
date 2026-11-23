@@ -1,3 +1,11 @@
+/** ID cố định của Workspace seed mẫu từ backend/prisma/seed.ts */
+export const DEMO_WORKSPACE_ID = "44444444-4444-4444-8444-444444444444";
+
+/** Chỉ xem là Workspace mẫu nếu ID khớp chính xác với ID seed mẫu từ DB */
+export function isDemoWorkspace(workspaceId?: string | null): boolean {
+  return workspaceId === DEMO_WORKSPACE_ID;
+}
+
 /** Dữ liệu minh họa cho UI. RiskSnapshot bám bản schema ứng viên CWRM-15; chưa phải API contract đã chốt. */
 export type TaskStatus =
   | "To Do"

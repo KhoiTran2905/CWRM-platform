@@ -57,10 +57,13 @@ export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
     <div className="table-scroll">
       <style>{`
         .tt-table { min-width: 940px; }
-        .tt-table thead th { padding: 10px 12px; font-size: 10.5px; }
-        .tt-table tbody tr.tt-row td { height: 44px; padding: 3px 12px; vertical-align: middle; }
+        .tt-table thead th { position: sticky; top: 0; z-index: 5; background: var(--card-soft); padding: 8px 12px; font-size: 10.5px; box-shadow: 0 1px 0 var(--border); }
+        .tt-table tbody tr.tt-row td { height: 44px; padding: 4px 12px; vertical-align: middle; transition: background .12s ease; }
+        .tt-table tbody tr.tt-row:hover td { background: var(--accent-soft); }
+        .tt-table tbody tr.tt-row:focus-within td { background: var(--accent-soft); }
         .tt-cell-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-        .tt-table .table-title { font-size: 12.5px; line-height: 1.2; }
+        .tt-table .table-title { font-size: 13px; font-weight: 650; line-height: 1.25; }
+        .tt-table .table-title:hover { color: var(--primary); text-decoration: underline; }
         .tt-table .table-subtitle { display: flex; align-items: center; gap: 6px; margin-top: 0; font-size: 10px; line-height: 1.2; }
         .tt-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-numeric: tabular-nums; font-size: 10px; font-weight: 700; letter-spacing: .02em; color: var(--faint); }
         .tt-avatar-stack { display: inline-flex; align-items: center; padding-left: 1px; }
@@ -77,6 +80,9 @@ export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
         .tt-action-cell { width: 76px; text-align: right; }
         .tt-actions { display: flex; justify-content: flex-end; gap: 5px; opacity: 0; transform: translateX(4px); transition: opacity .15s ease, transform .15s ease; }
         .tt-row:hover .tt-actions, .tt-row:focus-within .tt-actions { opacity: 1; transform: none; }
+        @media (hover: none) or (max-width: 1024px) {
+          .tt-actions { opacity: 1; transform: none; }
+        }
         .tt-quick { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text-2); }
         .tt-quick:hover { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-text); }
         .tt-quick-primary { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-text); }
@@ -86,53 +92,69 @@ export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
         <thead>
           <tr>
             <th>Công việc</th>
-            <th>Task Status</th>
+            <th>Trạng thái</th>
             <th>Hình thức</th>
-            <th>Assignment / Request</th>
+            <th>Trạng thái giao nhận</th>
             <th>A / R</th>
-            <th>Hạn</th>
-            <th>Risk</th>
+            <th>Hạn hoàn thành</th>
+            <th>Mức rủi ro</th>
             <th className="tt-action-head"><span className="muted">Thao tác</span></th>
           </tr>
         </thead>
         <tbody>
-          {tasks.map((task) => {
-            const inReview = task.status === "Review" || task.status === "REVIEW";
-            return (
-              <tr key={task.id} className="tt-row">
-                <td>
-                  <div className="tt-cell-main">
-                    <Link href={`/tasks/${task.id}`} className="table-title">{task.title}</Link>
-                    <span className="table-subtitle">
-                      <span className="tt-code">{task.id}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{task.team}</span>
-                    </span>
-                  </div>
-                </td>
-                <td><StatusBadge value={task.status} /></td>
-                <td><StatusBadge value={task.assignmentMode} /></td>
-                <td>
-                  {task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : task.requestStatus ? <StatusBadge value={task.requestStatus} /> : <span className="muted">Chưa có</span>}
-                </td>
-                <td><AvatarStack accountable={task.accountable} responsible={task.responsible} /></td>
-                <td>{task.deadlineLabel}</td>
-                <td><StatusBadge value={task.riskLevel} /></td>
-                <td className="tt-action-cell">
-                  <div className="tt-actions">
-                    <Link href={`/tasks/${task.id}`} className="tt-quick" title="Mở chi tiết" aria-label={`Mở chi tiết ${task.id}`}>
-                      <OpenIcon />
-                    </Link>
-                    {inReview && (
-                      <Link href={`/tasks/${task.id}`} className="tt-quick tt-quick-primary" title="Xem nghiệm thu" aria-label={`Xem nghiệm thu ${task.id}`}>
-                        <CheckIcon />
+          {tasks.length === 0 ? (
+            <tr>
+              <td colSpan={8} style={{ textAlign: "center", padding: "32px 16px", color: "var(--muted)" }}>
+                <p style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--heading)", margin: "0 0 4px" }}>
+                  Chưa có công việc nào
+                </p>
+                <p style={{ fontSize: "12px", margin: "0 0 12px" }}>
+                  Hãy bấm &quot;+ Tạo công việc&quot; để thêm công việc mới và phân định trách nhiệm RACI.
+                </p>
+                <Link href="/tasks/new" className="button button-primary" style={{ height: "32px", fontSize: "12px", padding: "0 14px" }}>
+                  + Tạo công việc
+                </Link>
+              </td>
+            </tr>
+          ) : (
+            tasks.map((task) => {
+              const inReview = task.status === "Review" || task.status === "REVIEW";
+              return (
+                <tr key={task.id} className="tt-row">
+                  <td>
+                    <div className="tt-cell-main">
+                      <Link href={`/tasks/${task.id}`} className="table-title">{task.title}</Link>
+                      <span className="table-subtitle">
+                        <span className="tt-code">{task.id}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{task.team}</span>
+                      </span>
+                    </div>
+                  </td>
+                  <td><StatusBadge value={task.status} /></td>
+                  <td><StatusBadge value={task.assignmentMode} /></td>
+                  <td>
+                    {task.assignmentStatus ? <StatusBadge value={task.assignmentStatus} /> : task.requestStatus ? <StatusBadge value={task.requestStatus} /> : <span className="muted">Chưa có</span>}
+                  </td>
+                  <td><AvatarStack accountable={task.accountable} responsible={task.responsible} /></td>
+                  <td>{task.deadlineLabel}</td>
+                  <td><StatusBadge value={task.riskLevel} /></td>
+                  <td className="tt-action-cell">
+                    <div className="tt-actions">
+                      <Link href={`/tasks/${task.id}`} className="tt-quick" title="Mở chi tiết" aria-label={`Mở chi tiết ${task.id}`}>
+                        <OpenIcon />
                       </Link>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
+                      {inReview && (
+                        <Link href={`/tasks/${task.id}`} className="tt-quick tt-quick-primary" title="Xem nghiệm thu" aria-label={`Xem nghiệm thu ${task.id}`}>
+                          <CheckIcon />
+                        </Link>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </div>

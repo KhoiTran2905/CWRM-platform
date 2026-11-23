@@ -1,16 +1,39 @@
 # CWRM frontend
 
-Next.js UI skeleton cho CWRM-14. Các màn hiện có: `/login`, `/manager`, `/tasks`, `/tasks/new`, `/tasks/[id]`, `/my-work`, `/open-work`, `/review`, `/risk`. Màn task detail minh họa Direct/Open, trạng thái request/assignment, blocker, dependency và Review/Done guard; các nút nghiệp vụ chưa ghi dữ liệu vì chưa có API nghiệp vụ. [Đối chiếu CWRM-14](../docs/ux/CWRM-14_Acceptance_Criteria_Verification.md) ghi rõ phần đã kiểm tra và bằng chứng còn thiếu.
+Next.js UI cho CWRM-27. `/register`, `/login`, `/workspaces`, `/workspace` dùng Auth/Workspace API thật. Các màn `/manager`, `/tasks`, `/tasks/new`, `/tasks/[id]`, `/my-work`, `/open-work`, `/review`, `/risk` vẫn minh họa dữ liệu và chưa ghi nghiệp vụ qua API. [Đối chiếu CWRM-14](../docs/ux/CWRM-14_Acceptance_Criteria_Verification.md) ghi rõ phần đã kiểm tra và bằng chứng còn thiếu.
+
+## Hướng dẫn cài đặt và chạy Frontend
 
 ```powershell
+# 1. Cài đặt các gói phụ thuộc
 npm ci
+
+# 2. Tạo file cấu hình môi trường
+Copy-Item .env.example .env.local
+
+# 3. Chạy giao diện ở môi trường phát triển
 npm run dev
 ```
 
-Mở http://localhost:3000 (chuyển đến `/manager`). Dùng `npm run lint` và `npm run build` để kiểm tra. Scripts dùng Webpack vì môi trường Windows hiện tại chặn SWC native của Turbopack.
+### Tài khoản mẫu đăng nhập (Dữ liệu seed Backend của Khôi)
 
-`src/lib/demo-data.ts` là dữ liệu minh họa theo Scope v0.1. `src/lib/api/client.ts` là đầu mối đọc task/risk; khi chưa đặt `NEXT_PUBLIC_API_BASE_URL` ứng dụng dùng dữ liệu mẫu. Nếu bật biến này, phải dùng URL gồm tiền tố `/api/v1` và cần phiên/token thật cho endpoint bảo vệ; backend CWRM-12 hiện chưa có API nghiệp vụ. `RiskSnapshot` mẫu bám fixture CWRM-15 của Ban, còn `TaskSummary` là view model đã làm phẳng, **chưa phải Task schema đầy đủ** trong OpenAPI CWRM-11 `0.2.0-draft`. Mọi nút cần backend đều bị khóa hoặc ghi rõ chưa lưu dữ liệu. Không đưa token vào biến `NEXT_PUBLIC`.
+Khi chạy cùng backend có kết nối cơ sở dữ liệu đã seed (`npm run db:seed`), bạn có thể sử dụng các tài khoản mẫu sau để đăng nhập:
+
+| Vai trò | Tên hiển thị | Email đăng nhập | Mật khẩu mặc định |
+| :--- | :--- | :--- | :--- |
+| **Trưởng nhóm (Manager)** | Trưởng nhóm Marketing | `manager@example.com` | `change_me_demo_only` |
+| **Thành viên (Member - Content)** | Chuyên viên nội dung | `content@example.com` | `change_me_demo_only` |
+| **Thành viên (Member - Designer)** | Thiết kế đồ họa | `designer@example.com` | `change_me_demo_only` |
+
+* **Workspace mẫu:** Chọn **Marketing Demo** sau khi đăng nhập để truy cập bàn làm việc với các task mẫu.
+* Bạn cũng có thể bấm **Đăng ký ngay** trên form đăng nhập để tạo tài khoản mới độc lập.
+
+Chạy backend trên `main` tại `http://localhost:3001`, rồi mở http://localhost:3000 (chuyển đến `/workspaces` và yêu cầu đăng nhập). `CWRM_API_BASE_URL` chỉ được đọc phía server, gồm tiền tố `/api/v1`. Đăng ký rồi đăng nhập; tạo hoặc chọn Workspace. Token nằm trong cookie HttpOnly (`cwrm_access`), không trả về JavaScript trình duyệt. Khi phiên hết hạn, ứng dụng chuyển về `/login`. Dùng `npm run lint` và `npm run build` để kiểm tra. Scripts dùng Webpack vì môi trường Windows hiện tại chặn SWC native của Turbopack.
+
+Sau khi build, chạy `node scripts/smoke-auth-workspace.mjs` để kiểm tra luồng HTTP với backend giả lập cục bộ: bảo vệ trang, đăng ký, đăng nhập, liệt kê/tạo/chọn Workspace và đăng xuất. Kiểm tra này xác nhận giao diện ghép API đúng định dạng; bằng chứng Web–API–DB thật cần chạy thêm với backend (trên `main`) và PostgreSQL.
+
+`src/lib/demo-data.ts` là dữ liệu minh họa theo Scope v0.1. `src/lib/api/client.ts` là đầu mối đọc task/risk, hiện mặc định dùng dữ liệu mẫu vì backend chưa có API nghiệp vụ task/risk. Chỉ bật `NEXT_PUBLIC_TASK_API_ENABLED=true` khi có API Task tương thích và cơ chế xác thực tương ứng. `RiskSnapshot` mẫu bám fixture CWRM-15 của Ban, còn `TaskSummary` là view model đã làm phẳng, **chưa phải Task schema đầy đủ** trong OpenAPI CWRM-11 `0.3.3-draft`. Mọi nút cần backend đều bị khóa hoặc ghi rõ chưa lưu dữ liệu. Không đưa token vào biến `NEXT_PUBLIC`.
 
 ## Bàn giao tích hợp Sprint 2
 
-Nhánh CWRM-26 đưa frontend skeleton đã nghiệm thu vào PR hướng `main`. [Bảng kiểm và điểm còn chờ](../docs/integration/CWRM-26_Frontend_Integration_Handoff.md) ghi đúng commit nguồn, kết quả build và xung đột cần xử lý khi ghép backend. Contract mục tiêu hiện là OpenAPI `0.3.2-draft` của CWRM-18; Auth/Workspace API và giao diện dùng API thật được triển khai, kiểm thử ở CWRM-24/CWRM-27. Giao diện và dữ liệu minh họa trong PR này chưa phải bằng chứng Web–API–DB.
+Nhánh CWRM-26 đưa frontend skeleton đã nghiệm thu vào PR hướng `main`. [Bảng kiểm và điểm còn chờ](../docs/integration/CWRM-26_Frontend_Integration_Handoff.md) ghi đúng commit nguồn, kết quả build và xung đột cần xử lý khi ghép backend. Contract mục tiêu hiện là OpenAPI `0.3.3-draft` của CWRM-18; Auth/Workspace API và giao diện dùng API thật được triển khai, kiểm thử ở CWRM-24/CWRM-27. Giao diện và dữ liệu minh họa trong PR này chưa phải bằng chứng Web–API–DB.
