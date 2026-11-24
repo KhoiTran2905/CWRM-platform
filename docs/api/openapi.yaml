@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CWRM API
-  version: 0.3.3-draft
+  version: 0.3.4-draft
   description: |
     REST contract CWRM MVP theo Scope v0.2 Final (14/11/2026) kèm Clarification FINAL-01..08 (PM duyệt 15/11/2026), thay cho Scope v0.1. Enum dùng UPPER_SNAKE_CASE; API dùng camelCase; DB dùng snake_case. Scope gồm S01–S12 và rule R01–R13. Rule Set v0.2 dùng ruleVersion 2.0.0; snapshot cũ giữ ruleVersion cũ.
     Manager và Member là hai quyền hệ thống. Main Role theo Team, Task Role theo Assignment, Skill do Member khai; các nhãn chuyên môn không cấp quyền. Task status, Assignment status, Request status, confirmation milestone và coverage là các trạng thái riêng. Mọi timestamp là UTC ISO-8601; ghi có expectedVersion; list dùng page/pageSize. Phong bì lỗi thống nhất { error: { code, message, details } }.
@@ -52,6 +52,7 @@ info:
     | 422 | EFFORT_ALLOCATION_EXCEEDED | Tổng effort allocation vượt Task estimate. |
     | 422 | WORK_UPDATE_DUPLICATE | Nội dung trùng Work Update gần nhất của tác giả trên task. |
     | 422 | AI_CONTEXT_UNAVAILABLE | Không dựng được context AI hợp lệ; provider không được gọi. |
+    | 422 | FILTER_NOT_AVAILABLE | Đề xuất P-02 của 0.3.4-draft (EST-03): query có bộ lọc mà module nguồn chưa triển khai; details.unsupportedFilters liệt kê tên các bộ lọc đó. |
     | 422 | RISK_INPUT_INVALID | Chỉ input bắt buộc thiếu hoặc sai miền, ví dụ deadline/progress; details là danh sách field/problem. Thiếu capacity hoặc remaining effort là gap trong snapshot PARTIAL, không phải lỗi input. |
     | 500 | INTERNAL_ERROR | Lỗi hệ thống không dự kiến. |
     | 502 | AI_PROVIDER_ERROR | Gemini/provider trả lỗi. |
@@ -244,7 +245,7 @@ paths:
       operationId: listWorkspaceMembers
       tags: [Workspace]
       summary: Liệt kê thành viên workspace
-      description: Quyền WORKSPACE_MANAGER; liệt kê membership và nhãn role/skill trong workspace.
+      description: Quyền WORKSPACE_MANAGER; liệt kê membership và tập skill trong workspace. Main Role xem theo team qua GET /teams/{teamId}/members.
       x-permission: WORKSPACE_MANAGER
       responses:
         '200': {description: Membership phân trang, content: {application/json: {schema: {$ref: '#/components/schemas/MembershipPage'}}}}
@@ -260,11 +261,11 @@ paths:
     get:
       operationId: getWorkspaceMembership
       tags: [Workspace]
-      summary: Xem membership và nhãn role/skill của một thành viên
-      description: Quyền SELF hoặc WORKSPACE_MANAGER; MEMBER chỉ xem membership và nhãn role/skill của chính mình, MANAGER xem mọi thành viên trong workspace.
+      summary: Xem membership và tập skill của một thành viên
+      description: Quyền SELF hoặc WORKSPACE_MANAGER; MEMBER chỉ xem membership và tập skill của chính mình (kèm skillsVersion để gọi PUT my-skills), MANAGER xem mọi thành viên trong workspace.
       x-permission: [SELF, WORKSPACE_MANAGER]
       responses:
-        '200': {description: Membership và danh sách nhãn, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceMembership'}}}}
+        '200': {description: Membership và tập skill, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceMembership'}}}}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
@@ -679,6 +680,7 @@ paths:
       summary: Tự khai toàn bộ skill của tôi
       description: |
         Quyền SELF; caller phải là thành viên ACTIVE của workspace. Thay toàn bộ tập skill của chính Member, không nhận userId và Manager không sửa thay. Task requiredSkillIds chỉ dùng để hiển thị mức phù hợp, không gate Open Work.
+        Version thuộc cả tập skill (WorkspaceMembership.skillsVersion) và bắt đầu từ 1, kể cả khi Member chưa khai skill nào. skillIds rỗng là hợp lệ và xóa hết skill. expectedVersion khác version hiện tại trả 409 VERSION_CONFLICT, tập skill giữ nguyên. Gửi đúng tập đang có là no-op: trả 200 với version hiện tại, không tăng version. Mỗi lần tập skill thay đổi thật, version tăng đúng 1 trong cùng transaction với việc ghi member_skills.
       x-permission: SELF
       requestBody:
         required: true
@@ -688,15 +690,16 @@ paths:
               $ref: '#/components/schemas/MySkillsRequest'
       responses:
         '200':
-          description: Tập skill do caller khai báo
+          description: Tập skill sau khi ghi và version hiện tại
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LabelSet'
+                $ref: '#/components/schemas/MySkillSet'
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
         '422': {$ref: '#/components/responses/RuleViolation'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
@@ -788,7 +791,9 @@ paths:
       operationId: listTasks
       tags: [Task]
       summary: Liệt kê task theo phạm vi được phép
-      description: Quyền WORKSPACE_MEMBER; MANAGER xem mọi team trong workspace, MEMBER chỉ thấy task của team mình thuộc. Lọc theo teamId, status, priority, riskLevel, assignmentMode, openWorkState, accountableUserId, responsibleUserId, deadlineBefore và deadlineAfter. Danh sách Open Work lọc assignmentMode=OPEN_WORK cùng openWorkState=OPEN hoặc TEMPORARILY_FULL; hàng chờ review của A dùng status=REVIEW cùng accountableUserId.
+      description: |
+        Quyền WORKSPACE_MEMBER; MANAGER xem mọi team trong workspace, MEMBER chỉ thấy task của team mình thuộc. Lọc theo teamId, status, priority, riskLevel, assignmentMode, openWorkState, accountableUserId, responsibleUserId, deadlineBefore và deadlineAfter. Danh sách Open Work lọc assignmentMode=OPEN_WORK cùng openWorkState=OPEN hoặc TEMPORARILY_FULL; hàng chờ review của A dùng status=REVIEW cùng accountableUserId.
+        Đề xuất P-02 của 0.3.4-draft (EST-03), áp dụng khi module nguồn chưa triển khai: riskLevel cần risk snapshot, responsibleUserId cần assignment ACCEPTED còn hiệu lực, openWorkState cần trạng thái Open Work. Khi query có bất kỳ bộ lọc nào trong số này mà module nguồn chưa có, trả 422 FILTER_NOT_AVAILABLE, kể cả khi đi cùng bộ lọc đã hỗ trợ; details.unsupportedFilters liệt kê đúng các bộ lọc đó, sắp theo tên. Server không bỏ qua bộ lọc, không trả 200 với items rỗng để che việc chưa hỗ trợ và không gán giá trị mặc định. Kiểm quyền workspace chạy trước: người không có membership ACTIVE vẫn nhận 404. Query chỉ gồm bộ lọc đã hỗ trợ mà không khớp task nào thì trả 200 với items rỗng. Khi module nguồn sẵn sàng, bộ lọc tương ứng chạy trên dữ liệu thật và không còn trả mã này.
       x-permission: WORKSPACE_MEMBER
       parameters:
         - {$ref: '#/components/parameters/WorkspaceIdQuery'}
@@ -806,8 +811,11 @@ paths:
         - {name: deadlineAfter, in: query, schema: {type: string, format: date-time}}
       responses:
         '200': {description: Danh sách task phân trang, content: {application/json: {schema: {$ref: '#/components/schemas/TaskPage'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/FilterNotAvailable'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
     post:
@@ -2479,6 +2487,17 @@ components:
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
+    FilterNotAvailable:
+      description: Đề xuất P-02 của 0.3.4-draft (EST-03). Query có bộ lọc mà module nguồn chưa triển khai; details.unsupportedFilters liệt kê tên các bộ lọc đó.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          example:
+            error:
+              code: FILTER_NOT_AVAILABLE
+              message: Một số bộ lọc chưa được hỗ trợ.
+              details:
+                unsupportedFilters: [openWorkState, riskLevel]
     RiskInputInvalid:
       description: |
         422 RISK_INPUT_INVALID chỉ dành cho input bắt buộc bị thiếu hoặc sai miền, ví dụ deadline hoặc progress; details là danh sách lỗi theo field, không có stack trace và không tạo snapshot. remainingEffortHours = 0 là hợp lệ, không tạo gap. remaining effort null tạo gap REMAINING_EFFORT_MISSING; capacity chưa khai/chưa duyệt/bằng 0 tạo gap CAPACITY_NOT_DECLARED/CAPACITY_NOT_APPROVED/CAPACITY_ZERO. Các gap này tạo snapshot evaluationCoverage=PARTIAL và các rule còn lại vẫn được đánh giá, không trả RISK_INPUT_INVALID.
@@ -2583,7 +2602,7 @@ components:
         name: {type: string, minLength: 1, maxLength: 160}
     WorkspaceMembership:
       type: object
-      required: [id, workspaceId, userId, role, status]
+      required: [id, workspaceId, userId, role, status, skillIds, skillsVersion]
       properties:
         id: {type: string, format: uuid}
         workspaceId: {type: string, format: uuid}
@@ -2591,8 +2610,8 @@ components:
         role: {type: string, enum: [MANAGER, MEMBER]}
         status: {type: string, enum: [ACTIVE, INACTIVE]}
         displayName: {type: string}
-        roleIds: {type: array, items: {type: string, format: uuid}}
-        skillIds: {type: array, items: {type: string, format: uuid}}
+        skillIds: {type: array, items: {type: string, format: uuid}, description: Tập skill do chính Member khai; Member chưa khai skill thì trả mảng rỗng. Main Role đọc qua TeamMembership.mainRoleId theo từng team.}
+        skillsVersion: {type: integer, minimum: 1, description: Version của cả tập skill; client gửi lại làm MySkillsRequest.expectedVersion.}
     MembershipPatchRequest:
       type: object
       anyOf:
@@ -2677,19 +2696,23 @@ components:
       type: object
       required: [skillIds, expectedVersion]
       properties:
-        skillIds: {type: array, uniqueItems: true, items: {type: string, format: uuid}}
-        expectedVersion: {type: integer, minimum: 1}
+        skillIds: {type: array, uniqueItems: true, minItems: 0, items: {type: string, format: uuid}, description: Tập rỗng là hợp lệ.}
+        expectedVersion: {type: integer, minimum: 1, description: WorkspaceMembership.skillsVersion mà client đang thấy.}
+    MySkillSet:
+      type: object
+      required: [skillIds, version]
+      properties:
+        skillIds: {type: array, items: {type: string, format: uuid}}
+        version: {type: integer, minimum: 1, description: Version hiện tại của tập skill sau request.}
+      example:
+        skillIds: []
+        version: 3
     WithdrawalRejectRequest:
       type: object
       required: [decisionReason, expectedVersion]
       properties:
         decisionReason: {type: string, minLength: 1}
         expectedVersion: {type: integer, minimum: 1}
-    LabelSet:
-      type: object
-      required: [labelIds]
-      properties:
-        labelIds: {type: array, items: {type: string, format: uuid}}
     Milestone:
       type: object
       required: [id, teamId, name, deadlineAt, status, doneTaskCount, totalTaskCount, confirmedAt, confirmedByUserId, version]
@@ -4055,7 +4078,7 @@ components:
           properties:
             code:
               type: string
-              enum: [VALIDATION_ERROR, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VERSION_CONFLICT, CAPACITY_EXCEEDED, UNIQUE_CONFLICT, OPEN_WORK_TEMPORARILY_FULL, AI_TURN_IN_PROGRESS, AI_CONTEXT_CHANGED, INVALID_STATE_TRANSITION, OPEN_WORK_CLOSED, PREDECESSOR_NOT_DONE, OPEN_BLOCKERS_EXIST, NO_ACCEPTED_RESPONSIBLE, DEPENDENCY_CYCLE, CROSS_WORKSPACE_DEPENDENCY, MILESTONE_TEAM_MISMATCH, ACCOUNTABLE_NOT_MANAGER, LAST_MANAGER_REQUIRED, RESPONSIBILITY_REQUIRED, INVITEE_NOT_REGISTERED, ASSIGNMENT_CHANGE_NOT_ALLOWED_IN_REVIEW, PROGRESS_NOT_COMPLETE, RESPONSIBLE_CONFIRMATION_MISSING, EFFORT_ALLOCATION_EXCEEDED, WORK_UPDATE_DUPLICATE, AI_CONTEXT_UNAVAILABLE, RISK_INPUT_INVALID, RISK_EVALUATION_FAILED, AI_PROVIDER_ERROR, AI_OUTPUT_INVALID, AI_TIMEOUT, AI_QUOTA_EXCEEDED, SERVICE_UNAVAILABLE, INTERNAL_ERROR]
+              enum: [VALIDATION_ERROR, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VERSION_CONFLICT, CAPACITY_EXCEEDED, UNIQUE_CONFLICT, OPEN_WORK_TEMPORARILY_FULL, AI_TURN_IN_PROGRESS, AI_CONTEXT_CHANGED, INVALID_STATE_TRANSITION, OPEN_WORK_CLOSED, PREDECESSOR_NOT_DONE, OPEN_BLOCKERS_EXIST, NO_ACCEPTED_RESPONSIBLE, DEPENDENCY_CYCLE, CROSS_WORKSPACE_DEPENDENCY, MILESTONE_TEAM_MISMATCH, ACCOUNTABLE_NOT_MANAGER, LAST_MANAGER_REQUIRED, RESPONSIBILITY_REQUIRED, INVITEE_NOT_REGISTERED, ASSIGNMENT_CHANGE_NOT_ALLOWED_IN_REVIEW, PROGRESS_NOT_COMPLETE, RESPONSIBLE_CONFIRMATION_MISSING, EFFORT_ALLOCATION_EXCEEDED, WORK_UPDATE_DUPLICATE, AI_CONTEXT_UNAVAILABLE, FILTER_NOT_AVAILABLE, RISK_INPUT_INVALID, RISK_EVALUATION_FAILED, AI_PROVIDER_ERROR, AI_OUTPUT_INVALID, AI_TIMEOUT, AI_QUOTA_EXCEEDED, SERVICE_UNAVAILABLE, INTERNAL_ERROR]
             message: {type: string}
             details:
               oneOf:

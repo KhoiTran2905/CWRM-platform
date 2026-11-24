@@ -314,3 +314,79 @@ Bảo (PM/BA) review 0.3.3-draft ở Jira CWRM-18 comment 10127: đạt về n�
 | Câu về Scope v0.1/D1–D6 ở mục "Điểm contract khác bản nháp hiện có" dễ gây hiểu lầm | Giữ nguyên câu lịch sử, thêm ghi chú ngay dưới: baseline hiện hành là Scope v0.2 Final + FINAL-01..08; Scope v0.1 chỉ để đối chiếu. |
 | Architecture mục 10 thiếu AC14 | Thêm dòng AC14 và ghi rõ AC14 là tiêu chí nghiệm thu tổng thể DEL01–DEL06, không thuộc phần CWRM-18 phải triển khai hay chứng minh chạy thật. |
 | Minh chứng `redocly lint` và render Mermaid | Chạy lại trên commit hoàn thiện; log lint và ảnh render 7 sơ đồ đính kèm Jira CWRM-18 cùng commit. |
+
+## Review Candidate 0.3.4-draft (24/11/2026)
+
+**Trạng thái:** Review Candidate, **chưa được duyệt**. Baseline đang áp dụng vẫn là `0.3.3-draft` trên `main`. Nhánh `feature/CWRM-33-contract-0.3.4-draft` chỉ sửa `openapi.yaml`, `CWRM-11_ERD.md` và file này. PR để ở dạng Draft và chỉ merge sau khi PM duyệt. Không đổi Scope v0.2 Final, FINAL-01..08 hay WBS Final v1.0.
+
+**Nguồn:** CWRM-33 mục "Authorized pre-sprint preparation"; PM decision EST-03 (CWRM-32 #10174); Khôi xác nhận nội dung ở CWRM-33 #10181. Ba điểm L1–L3 là chỗ contract lệch ERD, phát hiện khi lập plan WP-014B ngày 23/11.
+
+Candidate gồm hai đề xuất. PM có thể duyệt riêng từng đề xuất:
+
+- **P-01 (L1–L3 và ngữ nghĩa `PUT my-skills`)** cần cho WP-014B. Cần PM duyệt trước 26/11 để kịp merge WP-014B.
+- **P-02 (`422 FILTER_NOT_AVAILABLE`)** cần cho WP-015A. Cần PM duyệt trước 30/11.
+
+### P-01 — Đồng bộ contract với ERD cho Member, Team và Skill
+
+| ID | Lệch ở 0.3.3-draft | Thay đổi ở 0.3.4-draft | File |
+|---|---|---|---|
+| L1 | `WorkspaceMembership.roleIds` vẫn còn, trong khi ERD đã bỏ `member_roles` và chuyển Main Role sang Team. | Bỏ `roleIds`. Main Role đọc qua `TeamMembership.mainRoleId` theo từng team. Mô tả `listWorkspaceMembers`/`getWorkspaceMembership` đổi "nhãn role/skill" thành "tập skill". | openapi |
+| L2 | `TeamMembership.version` và `TeamMemberMainRolePatchRequest.expectedVersion` đã có, nhưng bảng `team_memberships` không có cột version. | Thêm `team_memberships.version INTEGER NN DEFAULT 1` vào ERD. API không đổi. | ERD |
+| L3 | `MySkillsRequest.expectedVersion` đã có, nhưng `member_skills` là tập dòng, không có chỗ lưu version, và client cũng không đọc được version hiện tại. | Thêm `workspace_memberships.skills_version INTEGER NN DEFAULT 1`. API trả `WorkspaceMembership.skillsVersion`. | ERD, openapi |
+| L3a | `PUT my-skills` trả `LabelSet { labelIds }`, không có version. Response chưa khai 409. | Response đổi sang schema mới `MySkillSet { skillIds, version }`. Thêm response 409. Xóa schema `LabelSet` vì không còn operation nào dùng. | openapi |
+| L3b | `WorkspaceMembership.skillIds` và `skillsVersion` chỉ nằm trong `properties`, nên response thiếu hai trường này vẫn hợp lệ, và UI không chắc có `expectedVersion` để gọi `PUT my-skills`. Ban nêu ở CWRM-33 #10186, Hiệp nêu lại ở #10193. | Đưa `skillIds` và `skillsVersion` vào `required` của `WorkspaceMembership`. Member chưa khai skill thì trả `skillIds: []` kèm version hiện tại. Áp dụng cho cả 4 response dùng schema này: `listWorkspaceMembers` (qua `MembershipPage`), `getWorkspaceMembership`, `updateWorkspaceMembership` và `acceptWorkspaceInvitation`. Cả 4 đều thuộc WP-014B, chưa có mã nên không vỡ backend. | openapi |
+
+Ngữ nghĩa `PUT /workspaces/{workspaceId}/my-skills` ghi trong mô tả operation:
+
+1. Version thuộc cả tập skill và bắt đầu từ 1, kể cả khi Member chưa khai skill nào.
+2. `skillIds: []` là hợp lệ và xóa hết skill.
+3. `expectedVersion` khác version hiện tại thì trả 409 `VERSION_CONFLICT`, tập skill giữ nguyên.
+4. Gửi đúng tập đang có là no-op: trả 200 với version hiện tại, không tăng version.
+5. Mỗi lần tập thay đổi thật, version tăng đúng 1 trong cùng transaction với việc ghi `member_skills`. Response luôn trả version hiện tại sau request.
+
+Điểm 4 là lựa chọn của Khôi: no-op không tăng version, theo cùng cách R13 không coi no-op là hoạt động. Phương án còn lại là tăng version ở mọi lần PUT thành công. Ban đồng ý ở CWRM-33 #10186, với điều kiện kiểm `expectedVersion` trước khi xét no-op: gửi lại đúng tập đang có nhưng version cũ vẫn trả 409.
+
+### P-02 — `GET /tasks` với bộ lọc chưa hỗ trợ (EST-03)
+
+| Thay đổi | Chi tiết |
+|---|---|
+| Mã lỗi mới | `FILTER_NOT_AVAILABLE` (422), thêm vào bảng mã ở `info.description` và enum `ErrorResponse.error.code`. |
+| Response mới | `components.responses.FilterNotAvailable`, ví dụ `details: { unsupportedFilters: [openWorkState, riskLevel] }`. |
+| `listTasks` | Mô tả ghi quy tắc EST-03 và khai thêm response 400, 404 và 422. Bộ lọc nằm trong phạm vi: `riskLevel` (chờ risk snapshot), `responsibleUserId` (chờ assignment ACCEPTED còn hiệu lực), `openWorkState` (chờ trạng thái Open Work). |
+
+Quy tắc:
+
+1. Query có bất kỳ bộ lọc nào ở trên mà module nguồn chưa có thì trả 422, kể cả khi đi cùng bộ lọc đã hỗ trợ.
+2. `details.unsupportedFilters` liệt kê đúng các bộ lọc đó, sắp theo tên để test so khớp ổn định.
+3. Server không bỏ qua bộ lọc, không trả 200 với `items` rỗng để che việc chưa hỗ trợ và không gán giá trị mặc định.
+4. Kiểm quyền workspace chạy trước: người không có membership ACTIVE vẫn nhận 404.
+5. Query chỉ gồm bộ lọc đã hỗ trợ mà không khớp task nào thì trả 200 với `items` rỗng.
+6. Khi module nguồn sẵn sàng, bộ lọc tương ứng chạy trên dữ liệu thật và không còn trả mã này. Lúc đó cần một bản contract mới ghi nhận.
+
+**Ngoài phạm vi P-02:** `GET /dashboard/manager` có cùng ba bộ lọc. EST-03 chỉ nói `GET /tasks`, nên candidate không sửa operation này. Nhờ PM quyết có áp cùng quy tắc khi làm dashboard không.
+
+### Ảnh hưởng
+
+- **Frontend:** `frontend/src` trên `main 7f8ebb7` chưa dùng `roleIds`, `labelIds`, `my-skills`, và chưa gửi ba bộ lọc trên lên `GET /tasks`, nên không có chỗ nào vỡ. WP-016B (màn My Skills) đọc `skillsVersion` từ `GET /workspaces/{workspaceId}/members/{userId}` và gửi lại làm `expectedVersion`. WP-017A hiển thị 422 thành thông báo "bộ lọc chưa hỗ trợ", không hiển thị thành "0 công việc".
+- **Backend:** `src/common/errors/error-codes.ts` chỉ thêm `FILTER_NOT_AVAILABLE` trong WP-015A, sau khi P-02 được duyệt. Hai cột mới đi vào migration của WP-014B.
+- **Architecture:** không đổi luồng hay module nên `CWRM-11_Architecture.md` giữ nguyên trong candidate này. Dòng Trạng thái của file đó sẽ cập nhật khi PM duyệt.
+
+### Câu hỏi review
+
+| Người review | Câu hỏi |
+|---|---|
+| Đặng Văn Hiệp | Response `MySkillSet`, trường `skillsVersion` trên membership và cách UI xử lý 409 khi PUT my-skills có đủ cho WP-016B không? Thông báo 422 `FILTER_NOT_AVAILABLE` dựa trên `details.unsupportedFilters` có đủ cho WP-017A không? |
+| Lê Quốc Ban | Năm điểm ngữ nghĩa my-skills, nhất là no-op không tăng version, và sáu quy tắc P-02 có đủ để viết expected cho WP-020B không? |
+| Lê Đình Bảo (PM) | Duyệt P-01 và P-02, riêng hoặc cùng lúc, và quyết điểm `GET /dashboard/manager`. |
+
+### Phản hồi review (24–25/11/2026)
+
+| Người review | Nội dung | Xử lý trong candidate |
+|---|---|---|
+| Lê Quốc Ban (CWRM-33 #10186, 24/11) | P-01: `skillIds` và `skillsVersion` phải vào `required` của `WorkspaceMembership`. Đồng ý no-op không tăng version, nếu kiểm `expectedVersion` trước. P-02 đủ cơ sở viết expected. `GET /dashboard/manager` cần PM quyết riêng. Đây là review tài liệu, chưa xác nhận toàn PR đạt. | Sửa theo L3b. Ghi điều kiện no-op ở điểm 4. Điểm dashboard để PM quyết. |
+| Đặng Văn Hiệp (CWRM-33 #10193, 25/11) | Cùng ý `required` với Ban. UI dùng version từ response, cho gửi tập rỗng, gặp 409 thì báo dữ liệu đã đổi và tải lại; 422 `FILTER_NOT_AVAILABLE` hiển thị là bộ lọc chưa sẵn sàng, sau khi P-02 được duyệt. Hiệp xác nhận P-01 sau khi đối chiếu bản sửa. | Sửa theo L3b. Chờ Hiệp đối chiếu. |
+
+### Minh chứng
+
+- `redocly lint` (recommended): hợp lệ, 3 cảnh báo, giống hệt baseline 0.3.3-draft (`info-license`, server `localhost`, `/health` không có response 4xx). Không có cảnh báo mới.
+- Render Mermaid (`@mermaid-js/mermaid-cli`): cả 3 sơ đồ của `CWRM-11_ERD.md` render được, kể cả sơ đồ mục 2 có thêm hai cột. Architecture không đổi nên không render lại.
