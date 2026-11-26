@@ -317,14 +317,15 @@ Bảo (PM/BA) review 0.3.3-draft ở Jira CWRM-18 comment 10127: đạt về n�
 
 ## Review Candidate 0.3.4-draft (24/11/2026)
 
-**Trạng thái:** Review Candidate, **chưa được duyệt**. Baseline đang áp dụng vẫn là `0.3.3-draft` trên `main`. Nhánh `feature/CWRM-33-contract-0.3.4-draft` chỉ sửa `openapi.yaml`, `CWRM-11_ERD.md` và file này. PR để ở dạng Draft và chỉ merge sau khi PM duyệt. Không đổi Scope v0.2 Final, FINAL-01..08 hay WBS Final v1.0.
+**Trạng thái:** Review Candidate. Ngày 26/11/2026 PM duyệt **thiết kế** P-01, P-02 và P-03 (22 quy tắc, CWRM-33 #10203), nhưng **chưa phát hành** contract. Baseline đang áp dụng vẫn là `0.3.3-draft` trên `main`. Nhánh `feature/CWRM-33-contract-0.3.4-draft` chỉ sửa `openapi.yaml`, `CWRM-11_ERD.md` và file này. PR để ở dạng Draft và chỉ merge sau khi PM duyệt. Không đổi Scope v0.2 Final, FINAL-01..08 hay WBS Final v1.0.
 
 **Nguồn:** CWRM-33 mục "Authorized pre-sprint preparation"; PM decision EST-03 (CWRM-32 #10174); Khôi xác nhận nội dung ở CWRM-33 #10181. Ba điểm L1–L3 là chỗ contract lệch ERD, phát hiện khi lập plan WP-014B ngày 23/11.
 
-Candidate gồm hai đề xuất. PM có thể duyệt riêng từng đề xuất:
+Candidate gồm ba đề xuất:
 
-- **P-01 (L1–L3 và ngữ nghĩa `PUT my-skills`)** cần cho WP-014B. Cần PM duyệt trước 26/11 để kịp merge WP-014B.
-- **P-02 (`422 FILTER_NOT_AVAILABLE`)** cần cho WP-015A. Cần PM duyệt trước 30/11.
+- **P-01 (L1–L3 và ngữ nghĩa `PUT my-skills`)** cần cho WP-014B. PM duyệt thiết kế 26/11.
+- **P-02 (`422 FILTER_NOT_AVAILABLE` cho `GET /tasks`)** cần cho WP-015A. PM duyệt thiết kế 26/11.
+- **P-03 (cùng quy tắc cho `GET /dashboard/manager`)** do PM thêm khi trả lời câu hỏi dashboard ở #10203. Chỉ là đặc tả contract, không mở rộng phạm vi triển khai của CWRM-33/34 hay Sprint 3.
 
 ### P-01 — Đồng bộ contract với ERD cho Member, Team và Skill
 
@@ -351,7 +352,7 @@ Ngữ nghĩa `PUT /workspaces/{workspaceId}/my-skills` ghi trong mô tả operat
 | Thay đổi | Chi tiết |
 |---|---|
 | Mã lỗi mới | `FILTER_NOT_AVAILABLE` (422), thêm vào bảng mã ở `info.description` và enum `ErrorResponse.error.code`. |
-| Response mới | `components.responses.FilterNotAvailable`, ví dụ `details: { unsupportedFilters: [openWorkState, riskLevel] }`. |
+| Response mới | `components.responses.FilterNotAvailable`, ví dụ `details: { unsupportedFilters: [openWorkState, riskLevel] }`. Từ commit P-03, response này dùng schema `FilterNotAvailableError` (xem P-03). |
 | `listTasks` | Mô tả ghi quy tắc EST-03 và khai thêm response 400, 404 và 422. Bộ lọc nằm trong phạm vi: `riskLevel` (chờ risk snapshot), `responsibleUserId` (chờ assignment ACCEPTED còn hiệu lực), `openWorkState` (chờ trạng thái Open Work). |
 
 Quy tắc:
@@ -363,7 +364,19 @@ Quy tắc:
 5. Query chỉ gồm bộ lọc đã hỗ trợ mà không khớp task nào thì trả 200 với `items` rỗng.
 6. Khi module nguồn sẵn sàng, bộ lọc tương ứng chạy trên dữ liệu thật và không còn trả mã này. Lúc đó cần một bản contract mới ghi nhận.
 
-**Ngoài phạm vi P-02:** `GET /dashboard/manager` có cùng ba bộ lọc. EST-03 chỉ nói `GET /tasks`, nên candidate không sửa operation này. Nhờ PM quyết có áp cùng quy tắc khi làm dashboard không.
+**Ngoài phạm vi P-02:** `GET /dashboard/manager` có cùng ba bộ lọc. EST-03 chỉ nói `GET /tasks`, nên bản đầu của candidate không sửa operation này và hỏi PM. PM quyết ở #10203, xem P-03.
+
+### P-03 — `GET /dashboard/manager` với bộ lọc chưa hỗ trợ (CWRM-33 #10203, 26/11/2026)
+
+| Thay đổi | Chi tiết | Quy tắc PM |
+|---|---|---|
+| Mô tả `getManagerDashboard` | Có `riskLevel`, `responsibleUserId` hoặc `openWorkState` mà module nguồn chưa có thì cả request trả 422 `FILTER_NOT_AVAILABLE`, kể cả khi đi cùng bộ lọc đã hỗ trợ. Không trả số đếm 0, risk LOW hay danh sách rỗng để che. Bộ lọc đã hỗ trợ chạy trên dữ liệu thật, ngữ nghĩa các chỉ số giữ nguyên. Ghi rõ dashboard triển khai ở WP riêng, không thuộc WP-015A. | P03.1, P03.4, P03.5, P03.7 |
+| Response 422 | Khai `'422': FilterNotAvailable`, dùng chung response và `details.unsupportedFilters` với `listTasks`. | P03.2 |
+| Response 400 | Khai thêm `'400': BadRequest`. Baseline chưa khai 400 cho operation này, trong khi P02.5/P03.3 yêu cầu validation chạy trước 422; giá trị enum sai trong query vẫn phải ra 400 chứ không phải 422. | P03.3 |
+| Quyền | Giữ `x-permission: WORKSPACE_MANAGER` và 401/403 như baseline. Không thêm 404, vì đổi cách trả lỗi quyền nằm ngoài P-03. | P03.3 |
+| Schema lỗi mới `FilterNotAvailableError` | `allOf` của `ErrorResponse` (phong bì giữ nguyên), siết thêm: `code` chỉ là `FILTER_NOT_AVAILABLE`; `details` bắt buộc có `unsupportedFilters` và không có trường khác; `unsupportedFilters` có ít nhất 1 phần tử, không trùng, mỗi phần tử thuộc `[openWorkState, responsibleUserId, riskLevel]`. Thứ tự sắp theo tên không diễn đạt được bằng JSON Schema nên vẫn là quy tắc của operation và là một ca QA. | Yêu cầu hoàn thiện 2 của #10203 |
+
+Khi một module nguồn sẵn sàng, tên bộ lọc tương ứng phải được gỡ khỏi enum của `unsupportedFilters` trong cùng bản contract ghi nhận việc đó (P02.8).
 
 ### Ảnh hưởng
 
@@ -377,16 +390,20 @@ Quy tắc:
 |---|---|
 | Đặng Văn Hiệp | Response `MySkillSet`, trường `skillsVersion` trên membership và cách UI xử lý 409 khi PUT my-skills có đủ cho WP-016B không? Thông báo 422 `FILTER_NOT_AVAILABLE` dựa trên `details.unsupportedFilters` có đủ cho WP-017A không? |
 | Lê Quốc Ban | Năm điểm ngữ nghĩa my-skills, nhất là no-op không tăng version, và sáu quy tắc P-02 có đủ để viết expected cho WP-020B không? |
-| Lê Đình Bảo (PM) | Duyệt P-01 và P-02, riêng hoặc cùng lúc, và quyết điểm `GET /dashboard/manager`. |
+| Lê Đình Bảo (PM) | Duyệt P-01 và P-02, riêng hoặc cùng lúc, và quyết điểm `GET /dashboard/manager`. Đã trả lời ở #10203 (26/11). |
 
 ### Phản hồi review (24–25/11/2026)
 
 | Người review | Nội dung | Xử lý trong candidate |
 |---|---|---|
 | Lê Quốc Ban (CWRM-33 #10186, 24/11) | P-01: `skillIds` và `skillsVersion` phải vào `required` của `WorkspaceMembership`. Đồng ý no-op không tăng version, nếu kiểm `expectedVersion` trước. P-02 đủ cơ sở viết expected. `GET /dashboard/manager` cần PM quyết riêng. Đây là review tài liệu, chưa xác nhận toàn PR đạt. | Sửa theo L3b. Ghi điều kiện no-op ở điểm 4. Điểm dashboard để PM quyết. |
-| Đặng Văn Hiệp (CWRM-33 #10193, 25/11) | Cùng ý `required` với Ban. UI dùng version từ response, cho gửi tập rỗng, gặp 409 thì báo dữ liệu đã đổi và tải lại; 422 `FILTER_NOT_AVAILABLE` hiển thị là bộ lọc chưa sẵn sàng, sau khi P-02 được duyệt. Hiệp xác nhận P-01 sau khi đối chiếu bản sửa. | Sửa theo L3b. Chờ Hiệp đối chiếu. |
+| Đặng Văn Hiệp (CWRM-33 #10193, 25/11) | Cùng ý `required` với Ban. UI dùng version từ response, cho gửi tập rỗng, gặp 409 thì báo dữ liệu đã đổi và tải lại; 422 `FILTER_NOT_AVAILABLE` hiển thị là bộ lọc chưa sẵn sàng, sau khi P-02 được duyệt. Hiệp xác nhận P-01 sau khi đối chiếu bản sửa. | Sửa theo L3b. Hiệp đã đối chiếu, xem dòng #10206. |
+| Lê Quốc Ban (CWRM-33 #10195, 26/11) | Đối chiếu `5a28da3`: điểm chặn ở #10186 đã xử lý, **P-01 đạt review tài liệu** phía QA. P-02 đủ cơ sở viết ca ACL, tổ hợp filter và 422. Dashboard chờ PM. | Không cần sửa. Nhờ Ban review P-02/P-03 trên commit P-03. |
+| Lê Đình Bảo (CWRM-33 #10203, 26/11) | Duyệt thiết kế 22 quy tắc P01.1–P01.7, P02.1–P02.8, P03.1–P03.7; chưa phát hành contract. Yêu cầu bổ sung P-03, kiểm schema của `unsupportedFilters`, chạy lại lint; không tự merge PR #10, không phát hành `0.3.4-draft`, không chuyển CWRM-33/34 sang Done. | Thêm mục P-03 và schema `FilterNotAvailableError`. Trình lại commit cuối để PM nghiệm thu contract. |
+| Đặng Văn Hiệp (CWRM-34 #10206, 26/11) | Đối chiếu `5a28da3`: L3b và ngữ nghĩa My Skills đủ cho WP-016B, **P-01 đạt review tài liệu** phía frontend. Chưa xác nhận toàn PR, chờ P-03 và schema lỗi 422. | Nhờ Hiệp review P-03 và schema 422 trên commit P-03. |
 
 ### Minh chứng
 
 - `redocly lint` (recommended): hợp lệ, 3 cảnh báo, giống hệt baseline 0.3.3-draft (`info-license`, server `localhost`, `/health` không có response 4xx). Không có cảnh báo mới.
 - Render Mermaid (`@mermaid-js/mermaid-cli`): cả 3 sơ đồ của `CWRM-11_ERD.md` render được, kể cả sơ đồ mục 2 có thêm hai cột. Architecture không đổi nên không render lại.
+- Commit P-03 (26/11/2026): `redocly lint` 2.84.0 (recommended) hợp lệ, 3 cảnh báo, giống baseline. Ví dụ của `FilterNotAvailable` khớp schema mới. Kiểm phủ định bằng cách sửa tạm ví dụ: `unsupportedFilters: []`, tên ngoài danh sách (`teamId`), phần tử trùng, `code` khác và `details` có trường thừa đều bị rule `no-invalid-media-type-examples` bắt. ERD và Architecture không đổi trong commit này nên không render lại sơ đồ.

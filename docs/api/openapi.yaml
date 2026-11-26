@@ -52,7 +52,7 @@ info:
     | 422 | EFFORT_ALLOCATION_EXCEEDED | Tổng effort allocation vượt Task estimate. |
     | 422 | WORK_UPDATE_DUPLICATE | Nội dung trùng Work Update gần nhất của tác giả trên task. |
     | 422 | AI_CONTEXT_UNAVAILABLE | Không dựng được context AI hợp lệ; provider không được gọi. |
-    | 422 | FILTER_NOT_AVAILABLE | Đề xuất P-02 của 0.3.4-draft (EST-03): query có bộ lọc mà module nguồn chưa triển khai; details.unsupportedFilters liệt kê tên các bộ lọc đó. |
+    | 422 | FILTER_NOT_AVAILABLE | P-02/P-03 của 0.3.4-draft (EST-03; PM duyệt thiết kế 26/11/2026, chưa phát hành): `GET /tasks` hoặc `GET /dashboard/manager` có bộ lọc mà module nguồn chưa triển khai; details.unsupportedFilters liệt kê tên các bộ lọc đó, schema FilterNotAvailableError. |
     | 422 | RISK_INPUT_INVALID | Chỉ input bắt buộc thiếu hoặc sai miền, ví dụ deadline/progress; details là danh sách field/problem. Thiếu capacity hoặc remaining effort là gap trong snapshot PARTIAL, không phải lỗi input. |
     | 500 | INTERNAL_ERROR | Lỗi hệ thống không dự kiến. |
     | 502 | AI_PROVIDER_ERROR | Gemini/provider trả lỗi. |
@@ -793,7 +793,7 @@ paths:
       summary: Liệt kê task theo phạm vi được phép
       description: |
         Quyền WORKSPACE_MEMBER; MANAGER xem mọi team trong workspace, MEMBER chỉ thấy task của team mình thuộc. Lọc theo teamId, status, priority, riskLevel, assignmentMode, openWorkState, accountableUserId, responsibleUserId, deadlineBefore và deadlineAfter. Danh sách Open Work lọc assignmentMode=OPEN_WORK cùng openWorkState=OPEN hoặc TEMPORARILY_FULL; hàng chờ review của A dùng status=REVIEW cùng accountableUserId.
-        Đề xuất P-02 của 0.3.4-draft (EST-03), áp dụng khi module nguồn chưa triển khai: riskLevel cần risk snapshot, responsibleUserId cần assignment ACCEPTED còn hiệu lực, openWorkState cần trạng thái Open Work. Khi query có bất kỳ bộ lọc nào trong số này mà module nguồn chưa có, trả 422 FILTER_NOT_AVAILABLE, kể cả khi đi cùng bộ lọc đã hỗ trợ; details.unsupportedFilters liệt kê đúng các bộ lọc đó, sắp theo tên. Server không bỏ qua bộ lọc, không trả 200 với items rỗng để che việc chưa hỗ trợ và không gán giá trị mặc định. Kiểm quyền workspace chạy trước: người không có membership ACTIVE vẫn nhận 404. Query chỉ gồm bộ lọc đã hỗ trợ mà không khớp task nào thì trả 200 với items rỗng. Khi module nguồn sẵn sàng, bộ lọc tương ứng chạy trên dữ liệu thật và không còn trả mã này.
+        Quy tắc P-02 của 0.3.4-draft (EST-03; PM duyệt thiết kế ở CWRM-33 #10203, chưa phát hành), áp dụng khi module nguồn chưa triển khai: riskLevel cần risk snapshot, responsibleUserId cần assignment ACCEPTED còn hiệu lực, openWorkState cần trạng thái Open Work. Khi query có bất kỳ bộ lọc nào trong số này mà module nguồn chưa có, trả 422 FILTER_NOT_AVAILABLE, kể cả khi đi cùng bộ lọc đã hỗ trợ; details.unsupportedFilters liệt kê đúng các bộ lọc đó, sắp theo tên. Server không bỏ qua bộ lọc, không trả 200 với items rỗng để che việc chưa hỗ trợ và không gán giá trị mặc định. Kiểm quyền workspace chạy trước: người không có membership ACTIVE vẫn nhận 404. Query chỉ gồm bộ lọc đã hỗ trợ mà không khớp task nào thì trả 200 với items rỗng. Khi module nguồn sẵn sàng, bộ lọc tương ứng chạy trên dữ liệu thật và không còn trả mã này.
       x-permission: WORKSPACE_MEMBER
       parameters:
         - {$ref: '#/components/parameters/WorkspaceIdQuery'}
@@ -1588,7 +1588,9 @@ paths:
       operationId: getManagerDashboard
       tags: [Dashboard]
       summary: Dashboard risk của Manager
-      description: Quyền WORKSPACE_MANAGER; trả số task theo status/risk/coverage, danh sách R quá tải theo mốc R09, milestone READY chờ xác nhận, withdrawal và capacity chờ duyệt cùng danh sách task. Lọc bằng teamId, status, priority, riskLevel, assignmentMode, openWorkState, deadline và A/R.
+      description: |
+        Quyền WORKSPACE_MANAGER; trả số task theo status/risk/coverage, danh sách R quá tải theo mốc R09, milestone READY chờ xác nhận, withdrawal và capacity chờ duyệt cùng danh sách task. Lọc bằng teamId, status, priority, riskLevel, assignmentMode, openWorkState, deadline và A/R.
+        Quy tắc P-03 của 0.3.4-draft (PM duyệt thiết kế ở CWRM-33 #10203, chưa phát hành) dùng chung nguyên tắc P-02 của listTasks: khi query có riskLevel, responsibleUserId hoặc openWorkState mà module nguồn chưa triển khai, cả request trả 422 FILTER_NOT_AVAILABLE, kể cả khi đi cùng bộ lọc đã hỗ trợ; details.unsupportedFilters liệt kê đúng các bộ lọc đó, sắp theo tên. Server không trả số đếm 0, risk LOW hay danh sách rỗng để che bộ lọc chưa hỗ trợ. Kiểm quyền WORKSPACE_MANAGER và validation query chạy trước: caller không đủ quyền vẫn nhận 401/403, giá trị query sai miền vẫn nhận 400. Bộ lọc đã hỗ trợ chạy trên dữ liệu thật và ngữ nghĩa các chỉ số giữ nguyên. Đây là đặc tả contract; dashboard được triển khai ở WP riêng, không thuộc WP-015A.
       x-permission: WORKSPACE_MANAGER
       parameters:
         - {$ref: '#/components/parameters/WorkspaceIdQuery'}
@@ -1606,8 +1608,10 @@ paths:
         - {name: deadlineAfter, in: query, schema: {type: string, format: date-time}}
       responses:
         '200': {description: Dashboard phân trang, content: {application/json: {schema: {$ref: '#/components/schemas/Dashboard'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/FilterNotAvailable'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
   /dashboard/my-work:
@@ -2488,10 +2492,10 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
     FilterNotAvailable:
-      description: Đề xuất P-02 của 0.3.4-draft (EST-03). Query có bộ lọc mà module nguồn chưa triển khai; details.unsupportedFilters liệt kê tên các bộ lọc đó.
+      description: P-02/P-03 của 0.3.4-draft (EST-03). Query của listTasks hoặc getManagerDashboard có bộ lọc mà module nguồn chưa triển khai; details.unsupportedFilters liệt kê tên các bộ lọc đó, sắp theo tên.
       content:
         application/json:
-          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          schema: {$ref: '#/components/schemas/FilterNotAvailableError'}
           example:
             error:
               code: FILTER_NOT_AVAILABLE
@@ -4068,6 +4072,29 @@ components:
           required: [items]
           properties:
             items: {type: array, items: {$ref: '#/components/schemas/AuditLog'}}
+    FilterNotAvailableError:
+      description: Phong bì lỗi thống nhất của ErrorResponse, siết riêng cho 422 FILTER_NOT_AVAILABLE (P-02/P-03). details chỉ có unsupportedFilters, gồm ít nhất một tên bộ lọc, không trùng, sắp theo tên. Thứ tự sắp không diễn đạt được bằng schema nên là quy tắc của operation và là ca QA.
+      allOf:
+        - {$ref: '#/components/schemas/ErrorResponse'}
+        - type: object
+          required: [error]
+          properties:
+            error:
+              type: object
+              required: [code, details]
+              properties:
+                code: {type: string, enum: [FILTER_NOT_AVAILABLE]}
+                message: {type: string}
+                details:
+                  type: object
+                  required: [unsupportedFilters]
+                  additionalProperties: false
+                  properties:
+                    unsupportedFilters:
+                      type: array
+                      minItems: 1
+                      uniqueItems: true
+                      items: {type: string, enum: [openWorkState, responsibleUserId, riskLevel]}
     ErrorResponse:
       type: object
       required: [error]
