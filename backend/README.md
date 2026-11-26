@@ -76,7 +76,7 @@ Seed tạo ba tài khoản giả:
 
 Cả ba dùng mật khẩu được đặt trong `SEED_DEMO_PASSWORD` ở `.env`. README và mã nguồn không chứa mật khẩu thực.
 
-Dữ liệu demo theo kịch bản Marketing: workspace "Marketing Demo", team "Marketing", role Content và Designer, skill Copywriting và Figma, milestone "Campaign Launch" và ba task (viết nội dung, thiết kế poster, chạy quảng cáo).
+Dữ liệu demo theo kịch bản Marketing: workspace "Marketing Demo", team "Marketing", role Content và Designer, skill Copywriting và Figma, milestone "Campaign Launch" và ba task (viết nội dung, thiết kế poster, chạy quảng cáo). Trong team Marketing, `content` có Main Role Content và `designer` có Main Role Designer; `manager` không có Main Role. Capacity tuần: `content` đã được duyệt 20 giờ (version 2), `designer` đã khai 15 giờ và đang chờ duyệt (version 1), `manager` chưa khai (NOT_DECLARED).
 
 Mỗi lần chạy lại `npm run db:seed`, ba task demo được đưa về `TO_DO`, progress 0 và hạn được tính lại từ thời điểm chạy (poster còn 40 giờ). Dữ liệu khác bạn tự tạo không bị xóa.
 
@@ -106,22 +106,27 @@ backend/
 │   ├── schema.prisma     # Mô hình dữ liệu và enum
 │   └── seed.ts           # Dữ liệu demo có thể chạy lại
 ├── src/
-│   ├── common/           # Phong bì lỗi và bộ lọc lỗi
+│   ├── audit/            # audit_logs append-only dùng chung
+│   ├── auth/             # Đăng ký, đăng nhập, JWT, guard toàn cục
+│   ├── capacity/         # Capacity tuần: khai báo và duyệt
+│   ├── common/           # Phong bì lỗi, đồng hồ ứng dụng, phân trang
 │   ├── config/           # Kiểm tra biến môi trường
 │   ├── health/           # Endpoint kiểm tra API và database
 │   ├── prisma/           # PrismaService và module dùng chung
+│   ├── team/             # Team, Main Role, danh mục role/skill, my-skills
+│   ├── workspace/        # Workspace, member, invitation, guard phân quyền
 │   ├── generated/        # Prisma Client được sinh tự động
 │   ├── app.module.ts
 │   ├── app.setup.ts
 │   └── main.ts
-├── test/                 # E2E test
+├── test/                 # E2E test và test tích hợp (*.int-spec.ts)
 ├── .env.example
 └── docker-compose.yml
 ```
 
 ## Phạm vi hiện tại
 
-Backend hiện có đăng ký, đăng nhập, đăng xuất, đọc/cập nhật tài khoản hiện tại, tạo/liệt kê/đọc/cập nhật workspace, health API, Swagger, xử lý lỗi, migration và seed. Mọi route đều cần Bearer token trừ `GET /api/v1/health`, `POST /api/v1/auth/register` và `POST /api/v1/auth/login`. Workspace chỉ cho phép thành viên ACTIVE; đổi tên yêu cầu vai trò MANAGER. Chưa triển khai members, invitations, team, CRUD task, phân công, risk hoặc AI.
+Backend hiện có đăng ký, đăng nhập, đăng xuất, đọc/cập nhật tài khoản hiện tại, tạo/liệt kê/đọc/cập nhật workspace, health API, Swagger, xử lý lỗi, migration và seed. Mọi route đều cần Bearer token trừ `GET /api/v1/health`, `POST /api/v1/auth/register` và `POST /api/v1/auth/login`. Workspace chỉ cho phép thành viên ACTIVE; đổi tên yêu cầu vai trò MANAGER. WP-014B (CWRM-33) thêm member, invitation, team và Main Role, danh mục role/skill, my-skills và capacity tuần theo contract `0.3.4-draft` (thiết kế P-01 PM duyệt 26/11/2026, chưa phát hành), cùng bảng `audit_logs` dùng chung. Chưa triển khai CRUD task, milestone, phân công, risk hoặc AI.
 
 Các endpoint đã có:
 
@@ -136,9 +141,34 @@ Các endpoint đã có:
 - `PATCH /api/v1/workspaces/{workspaceId}`
 - `GET /api/v1/health`
 
+Thêm ở WP-014B (30 endpoint):
+
+- Member: `GET /workspaces/{workspaceId}/members`, `GET`/`PATCH`/`DELETE /workspaces/{workspaceId}/members/{userId}`
+- Invitation: `GET`/`POST /workspaces/{workspaceId}/invitations`, `GET /workspace-invitations`, `POST /workspace-invitations/{invitationId}/accept`, `POST /workspace-invitations/{invitationId}/decline`
+- Team: `GET`/`POST /workspaces/{workspaceId}/teams`, `GET`/`PATCH /teams/{teamId}`, `GET`/`POST /teams/{teamId}/members`, `DELETE`/`PATCH /teams/{teamId}/members/{userId}` (PATCH đặt Main Role)
+- Role/Skill: `GET`/`POST /workspaces/{workspaceId}/roles`, `PATCH`/`DELETE /roles/{roleId}`, `GET`/`POST /workspaces/{workspaceId}/skills`, `PATCH`/`DELETE /skills/{skillId}`, `PUT /workspaces/{workspaceId}/my-skills`
+- Capacity: `GET`/`PUT /workspaces/{workspaceId}/my-capacity`, `GET /workspaces/{workspaceId}/capacities`, `POST /workspaces/{workspaceId}/members/{userId}/capacity/approve`
+
+Tất cả nằm dưới tiền tố `/api/v1`.
+
 Thiết kế gốc nằm trong tài liệu CWRM-11: ERD ở `docs/architecture/CWRM-11_ERD.md`, hợp đồng API ở `docs/api/openapi.yaml`, quyết định công nghệ ở `docs/architecture/adr/ADR-001-tech-stack.md`. Khi mã và các tài liệu này khác nhau thì phải nêu ra để thống nhất, không tự sửa một bên.
 
 Khác với hợp đồng hiện tại ở một điểm: khi mất kết nối database, `GET /health` trả 503 với mã lỗi `SERVICE_UNAVAILABLE`; mã này sẽ được bổ sung vào `openapi.yaml` ở lần cập nhật tới.
+
+Những chỗ contract `0.3.4-draft` chưa quy định và WP-014B đã chọn cách làm. Các điểm này cần Bảo, Hiệp và Ban xác nhận rồi đưa vào contract:
+
+1. Đổi tên team/role/skill trùng tên (không phân biệt hoa thường) trả 409 `UNIQUE_CONFLICT`, dù `updateTeam`/`updateRole`/`updateSkill` chưa khai response 409.
+2. Accept/Decline lời mời đã phản hồi, duyệt capacity không ở trạng thái chờ duyệt hoặc chưa khai báo: trả 422 `INVALID_STATE_TRANSITION`, theo bảng mã lỗi (mã này là 422), dù các operation đó chỉ khai 409.
+3. Tham chiếu sai trong body trả 400 `VALIDATION_ERROR` kèm `details.fields`: `userId` chưa là thành viên ACTIVE của workspace khi thêm vào team, `mainRoleId` thuộc workspace khác, `skillIds` không thuộc workspace (kèm `details.unknownSkillIds`).
+4. Xóa role/skill đang được dùng trả 409 `UNIQUE_CONFLICT` với `details.reason = IN_USE` và số tham chiếu. Bảng mã lỗi chưa có mã riêng cho trường hợp này.
+5. `TEAM_ACCESS` không đạt trả 404 giống team không tồn tại (không lộ team của người khác). Lời mời của người khác cũng trả 404.
+6. Gỡ hoặc vô hiệu hóa thành viên workspace thì các team membership của người đó trong workspace cũng chuyển INACTIVE.
+7. Hạ quyền, vô hiệu hóa hoặc gỡ Manager đang là A của task chưa DONE trả 422 `RESPONSIBILITY_REQUIRED`; gỡ khỏi team người đang là A của task chưa DONE trong team đó cũng vậy.
+8. Số giờ capacity nhận từ 0 đến 168, tối đa 2 chữ số thập phân (contract chỉ ghi `minimum: 0`).
+9. Đặt lại đúng Main Role đang có là no-op, không tăng version (cùng cách với `PUT my-skills`).
+10. `GET /workspace-invitations` trả mọi trạng thái, mới nhất trước.
+
+Mọi mốc thời gian nghiệp vụ (`respondedAt`, `declaredAt`, `approvedAt`, `audit_logs.created_at`...) lấy từ đồng hồ của ứng dụng (`src/common/clock.ts`), không lấy từ `now()` của PostgreSQL. `audit_logs` có trigger chặn UPDATE/DELETE; mọi thay đổi ở trên đều ghi audit trong cùng transaction.
 
 ERD mô tả các trạng thái bằng `VARCHAR` kèm `CHECK`; schema CWRM-12 dùng enum PostgreSQL của Prisma cho các miền trạng thái, assignment mode, priority và deadline type. Các mã enum vẫn giữ dạng UPPER_SNAKE_CASE. Một số kiểm tra miền số và unique theo tên không phân biệt chữ hoa/thường được bổ sung trực tiếp trong migration SQL.
 
