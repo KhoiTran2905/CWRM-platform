@@ -368,6 +368,15 @@ describe('WP-014B · Member và Invitation với PostgreSQL', () => {
 
       await joinWorkspace(app, manager, member, workspaceId);
       await api(app, member).get(`/workspaces/${workspaceId}`).expect(200);
+      // C33-02.2: tham gia lại workspace không tự khôi phục team cũ.
+      await api(app, member).get(`/teams/${teamId}`).expect(404);
+      expect(
+        (
+          await prisma.teamMembership.findUniqueOrThrow({
+            where: { teamId_userId: { teamId, userId: member.id } },
+          })
+        ).status,
+      ).toBe('INACTIVE');
       expect(await auditActions(prisma, membership.id)).toEqual([
         'MEMBERSHIP_JOINED',
         'MEMBERSHIP_REMOVED',

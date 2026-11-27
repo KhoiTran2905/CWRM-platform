@@ -7,7 +7,8 @@ import {
 /**
  * Quyền theo x-permission của contract. Guard tra workspace từ tài nguyên trên URL rồi kiểm membership ACTIVE.
  * - WORKSPACE_MEMBER: membership ACTIVE.
- * - WORKSPACE_MANAGER: Manager ACTIVE; Member ACTIVE nhận 403.
+ * - WORKSPACE_MANAGER: Manager ACTIVE; Member ACTIVE nhận 403. Riêng tài nguyên của team, Member không thuộc team
+ *   nhận 404 như TEAM_ACCESS không đạt (C33-02.1).
  * - TEAM_ACCESS: Manager của workspace chứa team, hoặc thành viên ACTIVE của team; không đạt thì 404 để không lộ team.
  * - SELF_OR_MANAGER: chính chủ :userId hoặc Manager; Member xem người khác nhận 403.
  */

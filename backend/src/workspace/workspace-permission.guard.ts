@@ -75,13 +75,13 @@ export class WorkspacePermissionGuard implements CanActivate {
     if (!membership || membership.status !== 'ACTIVE') throw notFound;
 
     const isManager = membership.role === 'MANAGER';
-    if (permission === 'WORKSPACE_MANAGER' && !isManager) {
-      throw forbidden();
-    }
-    if (permission === 'SELF_OR_MANAGER' && !isManager) {
-      if (request.params.userId !== request.user.id) throw forbidden();
-    }
-    if (permission === 'TEAM_ACCESS' && !isManager) {
+    // C33-02.1: Member chỉ "nhìn thấy" team mình đang là thành viên ACTIVE. Ngoài phạm vi đó trả 404 như
+    // team không tồn tại, kể cả với thao tác cần Manager; thấy team mà thiếu quyền thao tác mới là 403.
+    if (
+      scope === 'team' &&
+      !isManager &&
+      (permission === 'TEAM_ACCESS' || permission === 'WORKSPACE_MANAGER')
+    ) {
       const teamMembership = await this.prisma.teamMembership.findUnique({
         where: {
           teamId_userId: { teamId: resourceId, userId: request.user.id },
@@ -89,6 +89,12 @@ export class WorkspacePermissionGuard implements CanActivate {
         select: { status: true },
       });
       if (teamMembership?.status !== 'ACTIVE') throw notFound;
+    }
+    if (permission === 'WORKSPACE_MANAGER' && !isManager) {
+      throw forbidden();
+    }
+    if (permission === 'SELF_OR_MANAGER' && !isManager) {
+      if (request.params.userId !== request.user.id) throw forbidden();
     }
 
     request.workspaceAccess = { workspaceId, role: membership.role };

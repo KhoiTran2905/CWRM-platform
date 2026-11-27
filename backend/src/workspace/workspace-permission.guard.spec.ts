@@ -191,6 +191,31 @@ describe('Bộ bảo vệ quyền theo tài nguyên (WP-014B)', () => {
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 
+  it('C33-02.1: thao tác Manager trên team — Member ngoài team nhận 404, Member trong team nhận 403', async () => {
+    for (const [teamMembership, code] of [
+      [null, 'NOT_FOUND'],
+      [{ status: 'INACTIVE' }, 'NOT_FOUND'],
+      [{ status: 'ACTIVE' }, 'FORBIDDEN'],
+    ] as const) {
+      const prisma = prismaWith({
+        team: { workspaceId },
+        membership: { role: 'MEMBER', status: 'ACTIVE' },
+        teamMembership,
+      });
+      const { reflector, context } = contextFor(
+        { permission: 'WORKSPACE_MANAGER', scope: 'team' },
+        { teamId },
+      );
+      const guard = new WorkspacePermissionGuard(
+        reflector,
+        prisma as unknown as PrismaService,
+      );
+      await expect(guard.canActivate(context)).rejects.toMatchObject({
+        code,
+      });
+    }
+  });
+
   it('SELF_OR_MANAGER: Member xem chính mình được, xem người khác nhận 403', async () => {
     const otherId = '44444444-4444-4444-8444-444444444444';
     for (const [target, expected] of [

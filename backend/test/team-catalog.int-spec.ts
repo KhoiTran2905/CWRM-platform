@@ -105,6 +105,16 @@ describe('WP-014B · Team, Main Role, Role/Skill và my-skills với PostgreSQL'
         .patch(`/teams/${mine}`)
         .send({ name: 'Đổi' })
         .expect(403);
+      // C33-02.1: thao tác Manager trên team Member không nhìn thấy trả 404 như team không tồn tại.
+      const hiddenWrite = await api(app, member)
+        .patch(`/teams/${notMine}`)
+        .send({ name: 'Đổi' })
+        .expect(404);
+      expect(hiddenWrite.body).toEqual(missing.body);
+      await api(app, member)
+        .post(`/teams/${notMine}/members`)
+        .send({ userId: member.id })
+        .expect(404);
       await api(app, member)
         .post(`/workspaces/${workspaceId}/teams`)
         .send({ name: 'Mới' })
@@ -142,12 +152,20 @@ describe('WP-014B · Team, Main Role, Role/Skill và my-skills với PostgreSQL'
         .expect(409);
     });
 
-    it('gỡ thành viên team: chặn A của task chưa DONE; gỡ xong thêm lại thì kích hoạt lại', async () => {
+    it('gỡ thành viên team: chặn A của task chưa DONE; gỡ xong thêm lại thì kích hoạt lại, không khôi phục Main Role', async () => {
       const { manager, member, workspaceId } = await setup();
       const teamId = await createTeam(app, manager, workspaceId);
       await addToTeam(app, manager, teamId, manager);
       await addToTeam(app, manager, teamId, member);
       await createOpenTask(prisma, teamId, manager.id);
+      const role = await api(app, manager)
+        .post(`/workspaces/${workspaceId}/roles`)
+        .send({ name: 'Content' })
+        .expect(201);
+      await api(app, manager)
+        .patch(`/teams/${teamId}/members/${member.id}`)
+        .send({ mainRoleId: role.body.id, expectedVersion: 1 })
+        .expect(200);
 
       const blocked = await api(app, manager)
         .delete(`/teams/${teamId}/members/${manager.id}`)
@@ -166,7 +184,11 @@ describe('WP-014B · Team, Main Role, Role/Skill và my-skills với PostgreSQL'
         .post(`/teams/${teamId}/members`)
         .send({ userId: member.id })
         .expect(201);
-      expect(readded.body).toMatchObject({ status: 'ACTIVE', version: 3 });
+      expect(readded.body).toMatchObject({
+        status: 'ACTIVE',
+        mainRoleId: null,
+        version: 4,
+      });
     });
   });
 
@@ -250,6 +272,11 @@ describe('WP-014B · Team, Main Role, Role/Skill và my-skills với PostgreSQL'
         .send({ mainRoleId: foreignRole.body.id, expectedVersion: 1 })
         .expect(400);
       expect(foreign.body.error.details.fields).toHaveProperty('mainRoleId');
+      // C33-03.2: kiểm request trước expectedVersion, nên tham chiếu sai kèm version cũ vẫn là 400.
+      await api(app, manager)
+        .patch(path)
+        .send({ mainRoleId: foreignRole.body.id, expectedVersion: 9 })
+        .expect(400);
       await api(app, member)
         .patch(path)
         .send({ mainRoleId: null, expectedVersion: 1 })

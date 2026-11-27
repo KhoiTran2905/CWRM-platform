@@ -80,6 +80,49 @@ describe('WP-014B · Capacity tuần và audit_logs với PostgreSQL', () => {
     }
   });
 
+  it('C33-03.1/CD-02/CD-04: biên 0 và 168, duyệt sai trạng thái 422, caller ngoài workspace 404', async () => {
+    const { manager, member, workspaceId } = await setup();
+    const outsider = await user(app, 'outsider@example.com', 'Người ngoài');
+    const minePath = `/workspaces/${workspaceId}/my-capacity`;
+    const approvePath = `/workspaces/${workspaceId}/members/${member.id}/capacity/approve`;
+
+    const outside = await api(app, outsider)
+      .put(minePath)
+      .send({ declaredWeeklyHours: 10, expectedVersion: 0 })
+      .expect(404);
+    expect(outside.body.error.code).toBe('NOT_FOUND');
+    await api(app, outsider).get(minePath).expect(404);
+
+    await api(app, member)
+      .put(minePath)
+      .send({ declaredWeeklyHours: 168, expectedVersion: 0 })
+      .expect(200);
+    await api(app, member)
+      .put(minePath)
+      .send({ declaredWeeklyHours: 0, expectedVersion: 1 })
+      .expect(200);
+    for (const hours of [169, 20.005, null]) {
+      await api(app, manager)
+        .post(approvePath)
+        .send({ approvedWeeklyHours: hours, expectedVersion: 2 })
+        .expect(400);
+    }
+    await api(app, manager)
+      .post(approvePath)
+      .send({ approvedWeeklyHours: 168, expectedVersion: 2 })
+      .expect(200);
+    const again = await api(app, manager)
+      .post(approvePath)
+      .send({ approvedWeeklyHours: 10, expectedVersion: 3 })
+      .expect(422);
+    expect(again.body.error.code).toBe('INVALID_STATE_TRANSITION');
+    const capacity = await prisma.memberCapacity.findFirstOrThrow({
+      where: { workspaceId, userId: member.id },
+    });
+    expect(Number(capacity.approvedWeeklyHours)).toBe(168);
+    expect(capacity.version).toBe(3);
+  });
+
   it('khai lại giữ số đã duyệt cho tới khi Manager duyệt số mới (đầu vào R09)', async () => {
     const { manager, member, workspaceId } = await setup();
     const minePath = `/workspaces/${workspaceId}/my-capacity`;

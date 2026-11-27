@@ -185,8 +185,10 @@ export class TeamService {
           ? (
               await tx.teamMembership.update({
                 where: { id: existing.id },
+                // C33-02.2: thêm lại team không khôi phục Main Role cũ; Manager đặt lại qua PATCH.
                 data: {
                   status: 'ACTIVE',
+                  mainRoleId: null,
                   version: { increment: 1 },
                   updatedAt: now,
                 },
@@ -210,8 +212,10 @@ export class TeamService {
           objectType: 'TEAM_MEMBERSHIP',
           objectId: membershipId,
           action: 'TEAM_MEMBER_ADDED',
-          before: existing ? { status: existing.status } : null,
-          after: { teamId, userId, status: 'ACTIVE' },
+          before: existing
+            ? { status: existing.status, mainRoleId: existing.main_role_id }
+            : null,
+          after: { teamId, userId, status: 'ACTIVE', mainRoleId: null },
           at: now,
         });
         return getTeamMembershipOrThrow(tx, teamId, userId);
@@ -262,8 +266,9 @@ export class TeamService {
   }
 
   /**
-   * Đặt hoặc bỏ Main Role. Kiểm expectedVersion trước; gửi đúng Main Role đang có là no-op, không tăng version
-   * (cùng cách với PUT my-skills). Không đổi assignment hiện có.
+   * Đặt hoặc bỏ Main Role. Thứ tự kiểm theo C33-03.2: request (mainRoleId cùng workspace), expectedVersion,
+   * rồi mới xét no-op. No-op không tăng version, không ghi audit (cùng cách với PUT my-skills).
+   * Không đổi assignment hiện có.
    */
   setMainRole(
     access: WorkspaceAccess,
@@ -275,12 +280,6 @@ export class TeamService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const existing = await lockActiveTeamMembership(tx, teamId, userId);
-      if (existing.version !== expectedVersion) {
-        throw versionConflict(existing.version);
-      }
-      if (existing.main_role_id === mainRoleId) {
-        return getTeamMembershipOrThrow(tx, teamId, userId);
-      }
       if (mainRoleId !== null) {
         const role = await tx.role.findUnique({
           where: { id: mainRoleId },
@@ -293,6 +292,12 @@ export class TeamService {
             fields: { mainRoleId: [message] },
           });
         }
+      }
+      if (existing.version !== expectedVersion) {
+        throw versionConflict(existing.version);
+      }
+      if (existing.main_role_id === mainRoleId) {
+        return getTeamMembershipOrThrow(tx, teamId, userId);
       }
       const now = this.clock.now();
       await tx.teamMembership.update({

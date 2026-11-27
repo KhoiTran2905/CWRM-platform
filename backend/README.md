@@ -155,18 +155,18 @@ Thiết kế gốc nằm trong tài liệu CWRM-11: ERD ở `docs/architecture/C
 
 Khác với hợp đồng hiện tại ở một điểm: khi mất kết nối database, `GET /health` trả 503 với mã lỗi `SERVICE_UNAVAILABLE`; mã này sẽ được bổ sung vào `openapi.yaml` ở lần cập nhật tới.
 
-Những chỗ contract `0.3.4-draft` chưa quy định và WP-014B đã chọn cách làm. Các điểm này cần Bảo, Hiệp và Ban xác nhận rồi đưa vào contract:
+Hành vi dưới đây theo quyết định của PM ở CWRM-33 #10219 (C33-01.1–C33-03.3, 27/11/2026) và được ghi vào contract `0.3.4-draft` ở PR #10 (mục "Hoàn thiện theo PM #10219" trong `CWRM-11_Review_Log.md`). Contract này chưa phát hành:
 
-1. Đổi tên team/role/skill trùng tên (không phân biệt hoa thường) trả 409 `UNIQUE_CONFLICT`, dù `updateTeam`/`updateRole`/`updateSkill` chưa khai response 409.
-2. Accept/Decline lời mời đã phản hồi, duyệt capacity không ở trạng thái chờ duyệt hoặc chưa khai báo: trả 422 `INVALID_STATE_TRANSITION`, theo bảng mã lỗi (mã này là 422), dù các operation đó chỉ khai 409.
-3. Tham chiếu sai trong body trả 400 `VALIDATION_ERROR` kèm `details.fields`: `userId` chưa là thành viên ACTIVE của workspace khi thêm vào team, `mainRoleId` thuộc workspace khác, `skillIds` không thuộc workspace (kèm `details.unknownSkillIds`).
-4. Xóa role/skill đang được dùng trả 409 `UNIQUE_CONFLICT` với `details.reason = IN_USE` và số tham chiếu. Bảng mã lỗi chưa có mã riêng cho trường hợp này.
-5. `TEAM_ACCESS` không đạt trả 404 giống team không tồn tại (không lộ team của người khác). Lời mời của người khác cũng trả 404.
-6. Gỡ hoặc vô hiệu hóa thành viên workspace thì các team membership của người đó trong workspace cũng chuyển INACTIVE.
-7. Hạ quyền, vô hiệu hóa hoặc gỡ Manager đang là A của task chưa DONE trả 422 `RESPONSIBILITY_REQUIRED`; gỡ khỏi team người đang là A của task chưa DONE trong team đó cũng vậy.
-8. Số giờ capacity nhận từ 0 đến 168, tối đa 2 chữ số thập phân (contract chỉ ghi `minimum: 0`).
-9. Đặt lại đúng Main Role đang có là no-op, không tăng version (cùng cách với `PUT my-skills`).
-10. `GET /workspace-invitations` trả mọi trạng thái, mới nhất trước.
+1. C33-01.1: tên team/role/skill trùng trong cùng workspace (không phân biệt hoa thường), khi tạo hoặc đổi tên, trả 409 `UNIQUE_CONFLICT` và giữ nguyên dữ liệu.
+2. C33-01.2: Accept/Decline lời mời không còn PENDING, duyệt capacity chưa khai hoặc không ở PENDING_APPROVAL trả 422 `INVALID_STATE_TRANSITION`.
+3. C33-01.3: tham chiếu sai trong body trả 400 `VALIDATION_ERROR` kèm `details.fields`: `userId` chưa là thành viên ACTIVE của workspace khi thêm vào team, `mainRoleId` thuộc workspace khác, `skillIds` không thuộc workspace (kèm `details.unknownSkillIds`).
+4. C33-01.4: xóa role/skill đang được dùng trả 409 `UNIQUE_CONFLICT` với `details.reason = IN_USE` và số tham chiếu.
+5. C33-02.1: `TEAM_ACCESS` không đạt trả 404 giống team không tồn tại. Thao tác Manager trên team mà Member không thuộc (ví dụ `PATCH /teams/{teamId}`) cũng trả 404; Member của team đó nhận 403. Lời mời của người khác và `my-capacity` gọi từ ngoài workspace trả 404.
+6. C33-02.2: gỡ hoặc vô hiệu hóa thành viên workspace thì các team membership của người đó trong workspace cũng chuyển INACTIVE. Tham gia lại workspace không khôi phục team; thêm lại vào team thì Main Role về null.
+7. C33-02.3: hạ quyền, vô hiệu hóa hoặc gỡ Manager đang là A của task chưa DONE trả 422 `RESPONSIBILITY_REQUIRED`; gỡ khỏi team người đang là A của task chưa DONE trong team đó cũng vậy. Guard R (không để task mất R Accepted cuối) chưa có vì chưa có bảng `assignments`; làm và kiểm ở WP-024A/B, WP-026.
+8. C33-03.1: số giờ capacity nhận từ 0 đến 168, tối đa 2 chữ số thập phân; sai miền trả 400, không làm tròn.
+9. C33-03.2: đặt Main Role kiểm `mainRoleId`, rồi `expectedVersion`, rồi mới xét no-op. Đặt lại đúng Main Role đang có là no-op, không tăng version, không ghi audit.
+10. C33-03.3: `GET /workspace-invitations` trả mọi trạng thái, mới nhất trước, cùng thời điểm thì theo `id`.
 
 Mọi mốc thời gian nghiệp vụ (`respondedAt`, `declaredAt`, `approvedAt`, `audit_logs.created_at`...) lấy từ đồng hồ của ứng dụng (`src/common/clock.ts`), không lấy từ `now()` của PostgreSQL. `audit_logs` có trigger chặn UPDATE/DELETE; mọi thay đổi ở trên đều ghi audit trong cùng transaction.
 
