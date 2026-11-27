@@ -8,6 +8,7 @@ import { ClockModule } from './common/clock.js';
 import { AppConfigModule } from './config/app-config.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { TaskModule } from './task/task.module.js';
 import { TeamModule } from './team/team.module.js';
 import { WorkspaceModule } from './workspace/workspace.module.js';
 import { WorkspacePermissionGuard } from './workspace/workspace-permission.guard.js';
@@ -22,6 +23,7 @@ import { WorkspacePermissionGuard } from './workspace/workspace-permission.guard
     WorkspaceModule,
     TeamModule,
     CapacityModule,
+    TaskModule,
     HealthModule,
   ],
   providers: [

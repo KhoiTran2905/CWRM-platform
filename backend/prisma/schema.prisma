@@ -60,6 +60,22 @@ enum AssignmentMode {
   @@map("assignment_mode")
 }
 
+enum OpenWorkClosedReason {
+  FILLED
+  MANAGER_CLOSED
+
+  @@map("open_work_closed_reason")
+}
+
+enum QualifyingActivityType {
+  PROGRESS_CHANGED
+  CHECKLIST_CHANGED
+  RESPONSIBLE_CONFIRMED
+  WORK_UPDATE
+
+  @@map("qualifying_activity_type")
+}
+
 enum Priority {
   LOW
   MEDIUM
@@ -245,34 +261,40 @@ model Milestone {
 }
 
 model Task {
-  id                    String                 @id @default(uuid()) @db.Uuid
-  teamId                String                 @map("team_id") @db.Uuid
-  milestoneId           String?                @map("milestone_id") @db.Uuid
-  accountableUserId     String                 @map("accountable_user_id") @db.Uuid
-  title                 String                 @db.VarChar(200)
-  description           String?                @db.Text
-  status                TaskStatus             @default(TO_DO)
-  assignmentMode        AssignmentMode         @map("assignment_mode")
-  openWorkOpen          Boolean                @default(false) @map("open_work_open")
-  priority              Priority
-  deadlineAt            DateTime               @map("deadline_at") @db.Timestamptz(3)
-  deadlineType          DeadlineType           @map("deadline_type")
-  effortEstimateHours   Decimal?               @map("effort_estimate_hours") @db.Decimal(8, 2)
-  effortActualHours     Decimal?               @map("effort_actual_hours") @db.Decimal(8, 2)
-  requiredPeople        Int                    @map("required_people")
-  progress              Int                    @default(0) @db.SmallInt
-  resultText            String?                @map("result_text") @db.Text
-  resultUrl             String?                @map("result_url") @db.Text
-  startedAt             DateTime?              @map("started_at") @db.Timestamptz(3)
-  completedAt           DateTime?              @map("completed_at") @db.Timestamptz(3)
-  version               Int                    @default(1)
-  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
-  team                  Team                   @relation(fields: [teamId], references: [id], onDelete: Restrict)
-  milestone             Milestone?             @relation(fields: [teamId, milestoneId], references: [teamId, id], onDelete: Restrict)
-  accountableMembership TeamMembership         @relation(fields: [teamId, accountableUserId], references: [teamId, userId], onDelete: Restrict)
-  roleRequirements      TaskRoleRequirement[]
-  skillRequirements     TaskSkillRequirement[]
+  id                         String                  @id @default(uuid()) @db.Uuid
+  teamId                     String                  @map("team_id") @db.Uuid
+  milestoneId                String?                 @map("milestone_id") @db.Uuid
+  accountableUserId          String                  @map("accountable_user_id") @db.Uuid
+  title                      String                  @db.VarChar(200)
+  description                String?                 @db.Text
+  status                     TaskStatus              @default(TO_DO)
+  assignmentMode             AssignmentMode          @map("assignment_mode")
+  openWorkOpenedAt           DateTime?               @map("open_work_opened_at") @db.Timestamptz(3)
+  openWorkClosedAt           DateTime?               @map("open_work_closed_at") @db.Timestamptz(3)
+  openWorkClosedReason       OpenWorkClosedReason?   @map("open_work_closed_reason")
+  priority                   Priority
+  deadlineAt                 DateTime                @map("deadline_at") @db.Timestamptz(3)
+  deadlineType               DeadlineType            @map("deadline_type")
+  effortEstimateHours        Decimal?                @map("effort_estimate_hours") @db.Decimal(8, 2)
+  effortActualHours          Decimal?                @map("effort_actual_hours") @db.Decimal(8, 2)
+  requiredPeople             Int                     @map("required_people")
+  progress                   Int                     @default(0) @db.SmallInt
+  resultText                 String?                 @map("result_text") @db.Text
+  resultUrl                  String?                 @map("result_url") @db.Text
+  currentInProgressSince     DateTime?               @map("current_in_progress_since") @db.Timestamptz(3)
+  lastQualifyingActivityAt   DateTime?               @map("last_qualifying_activity_at") @db.Timestamptz(3)
+  lastQualifyingActivityType QualifyingActivityType? @map("last_qualifying_activity_type")
+  currentReviewSince         DateTime?               @map("current_review_since") @db.Timestamptz(3)
+  startedAt                  DateTime?               @map("started_at") @db.Timestamptz(3)
+  completedAt                DateTime?               @map("completed_at") @db.Timestamptz(3)
+  version                    Int                     @default(1)
+  createdAt                  DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  team                       Team                    @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  milestone                  Milestone?              @relation(fields: [teamId, milestoneId], references: [teamId, id], onDelete: Restrict)
+  accountableMembership      TeamMembership          @relation(fields: [teamId, accountableUserId], references: [teamId, userId], onDelete: Restrict)
+  roleRequirements           TaskRoleRequirement[]
+  skillRequirements          TaskSkillRequirement[]
 
   @@unique([teamId, id])
   @@index([teamId, status, deadlineAt])

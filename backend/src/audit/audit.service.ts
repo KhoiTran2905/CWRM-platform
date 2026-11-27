@@ -8,7 +8,8 @@ export type AuditObjectType =
   | 'TEAM_MEMBERSHIP'
   | 'ROLE'
   | 'SKILL'
-  | 'MEMBER_CAPACITY';
+  | 'MEMBER_CAPACITY'
+  | 'TASK';
 
 export interface AuditEntry {
   /** null nghĩa là SYSTEM. */

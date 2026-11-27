@@ -86,7 +86,7 @@ export async function addToTeam(
     .expect(201);
 }
 
-/** Tạo task trực tiếp qua Prisma (API task thuộc WP-015A) để kiểm quy tắc A của task chưa DONE. */
+/** Tạo task trực tiếp qua Prisma để kiểm quy tắc A của task chưa DONE, không phụ thuộc API task. */
 export async function createOpenTask(
   prisma: PrismaService,
   teamId: string,
