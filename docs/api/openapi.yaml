@@ -11,10 +11,10 @@ info:
     |---|---|
     | PUBLIC | Không cần token. |
     | AUTHENTICATED | Có JWT hợp lệ. |
-    | SELF | Chỉ tài nguyên thuộc caller trong JWT; không nhận userId để thao tác thay người khác. |
+    | SELF | Chỉ tài nguyên thuộc caller trong JWT; không nhận userId để thao tác thay người khác. Với đường dẫn có workspaceId, caller không có membership ACTIVE nhận 404 NOT_FOUND. Lời mời của tài khoản khác trả 404 NOT_FOUND như lời mời không tồn tại. |
     | WORKSPACE_MEMBER | Membership ACTIVE trong workspace; Member chỉ nhận dữ liệu team được phép. Người gọi không có membership ACTIVE (kể cả INACTIVE) nhận 404 NOT_FOUND giống workspace không tồn tại, để không lộ ID. |
-    | WORKSPACE_MANAGER | Manager ACTIVE trong workspace chứa tài nguyên. Không có membership ACTIVE trả 404 NOT_FOUND; Member ACTIVE trả 403 FORBIDDEN. |
-    | TEAM_ACCESS | Manager workspace chứa team hoặc thành viên ACTIVE của team. |
+    | WORKSPACE_MANAGER | Manager ACTIVE trong workspace chứa tài nguyên. Không có membership ACTIVE trả 404 NOT_FOUND; Member ACTIVE nhìn thấy tài nguyên trả 403 FORBIDDEN. Với tài nguyên của team (/teams/{teamId}...), Member ACTIVE không phải thành viên ACTIVE của team đó nhận 404 NOT_FOUND như TEAM_ACCESS không đạt (C33-02.1). |
+    | TEAM_ACCESS | Manager workspace chứa team hoặc thành viên ACTIVE của team. Không đạt trả 404 NOT_FOUND giống team không tồn tại. |
     | TASK_ACCESS | Manager workspace chứa task hoặc thành viên ACTIVE của team chứa task. Member ngoài team không gọi GET task. |
     | TASK_RESPONSIBLE | R có assignment ACCEPTED chưa kết thúc trên task. |
     | TASK_ACCOUNTABLE | A hiện hành của task. |
@@ -26,11 +26,11 @@ info:
     |---|---|---|
     | 400 | VALIDATION_ERROR | Body, query hoặc path sai cấu trúc/miền. |
     | 401 | UNAUTHENTICATED | Thiếu JWT hoặc JWT không hợp lệ/hết hạn. |
-    | 403 | FORBIDDEN | Không có quyền. |
-    | 404 | NOT_FOUND | Không tìm thấy tài nguyên trong phạm vi được phép. |
+    | 403 | FORBIDDEN | Nhìn thấy tài nguyên nhưng không có quyền thao tác. |
+    | 404 | NOT_FOUND | Tài nguyên không tồn tại hoặc nằm ngoài phạm vi caller được phép thấy; không lộ tài nguyên có tồn tại hay không. |
     | 409 | VERSION_CONFLICT | expectedVersion cũ. |
     | 409 | CAPACITY_EXCEEDED | Thao tác đồng thời tranh chỗ hoặc vượt requiredPeople. |
-    | 409 | UNIQUE_CONFLICT | Trùng dữ liệu duy nhất, gồm replacement đang chờ. |
+    | 409 | UNIQUE_CONFLICT | Trùng dữ liệu duy nhất, gồm replacement đang chờ và tên Team/Role/Skill trùng trong cùng workspace (không phân biệt hoa thường). Xóa Role/Skill còn được tham chiếu trả details.reason=IN_USE kèm số tham chiếu. |
     | 409 | OPEN_WORK_TEMPORARILY_FULL | Hết suất tạm thời do lời mời chờ xác nhận. |
     | 409 | AI_TURN_IN_PROGRESS | Thread đang có lượt xử lý. |
     | 409 | AI_CONTEXT_CHANGED | Task version hoặc snapshot hiện hành đổi trong lúc provider xử lý. |
@@ -275,7 +275,7 @@ paths:
       operationId: updateWorkspaceMembership
       tags: [Workspace]
       summary: Đổi quyền hoặc trạng thái membership
-      description: Quyền WORKSPACE_MANAGER; đổi Manager cuối thành MEMBER hoặc INACTIVE trả 422 LAST_MANAGER_REQUIRED; không làm mất A/R cần xử lý.
+      description: Quyền WORKSPACE_MANAGER; đổi Manager ACTIVE cuối thành MEMBER hoặc INACTIVE trả 422 LAST_MANAGER_REQUIRED, kể cả khi hai request chạy đồng thời. Hạ quyền hoặc vô hiệu hóa Manager đang là A của task chưa DONE trả 422 RESPONSIBILITY_REQUIRED; server không tự chuyển A, không kết thúc assignment. Chuyển INACTIVE thì mọi team membership của người đó trong workspace cũng chuyển INACTIVE, cùng transaction với audit (C33-02.2, C33-02.3). Gửi đúng role/status đang có là no-op, trả 200 và không ghi audit.
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/MembershipPatchRequest'}}}}
       responses:
@@ -292,7 +292,7 @@ paths:
       operationId: removeWorkspaceMembership
       tags: [Workspace]
       summary: Gỡ thành viên workspace
-      description: Quyền WORKSPACE_MANAGER; chỉ khi không còn trách nhiệm A/R cần xử lý và không gỡ hoặc vô hiệu hóa Manager cuối. Membership chuyển INACTIVE, lịch sử được giữ.
+      description: Quyền WORKSPACE_MANAGER; gỡ Manager ACTIVE cuối trả 422 LAST_MANAGER_REQUIRED, gỡ Manager đang là A của task chưa DONE trả 422 RESPONSIBILITY_REQUIRED. Membership workspace và mọi team membership của người đó trong workspace chuyển INACTIVE, cùng transaction với audit; lịch sử task, assignment, membership và audit được giữ, workspace khác không bị ảnh hưởng. Tham gia lại workspace (Accept lời mời mới) không tự khôi phục team cũ; Manager thêm lại team và đặt lại Main Role (C33-02.2). Guard R (không để task mất R Accepted cuối) áp dụng khi module assignment có dữ liệu (WP-024A/B, WP-026).
       x-permission: WORKSPACE_MANAGER
       responses:
         '204': {description: Membership đã gỡ}
@@ -344,7 +344,7 @@ paths:
       operationId: listMyWorkspaceInvitations
       tags: [Workspace]
       summary: Liệt kê lời mời gửi tới tôi
-      description: Quyền SELF; chỉ trả lời mời của account trong JWT, không gửi email.
+      description: Quyền SELF; chỉ trả lời mời của account trong JWT, gồm mọi trạng thái PENDING/ACCEPTED/DECLINED, mới nhất trước (createdAt giảm dần, cùng thời điểm thì theo id) để phân trang ổn định. Chỉ lời mời trong ứng dụng; không gửi email, không có hạn dùng (C33-03.3).
       x-permission: SELF
       parameters:
         - {$ref: '#/components/parameters/Page'}
@@ -361,7 +361,7 @@ paths:
       operationId: acceptWorkspaceInvitation
       tags: [Workspace]
       summary: Chấp nhận lời mời
-      description: Quyền SELF; chỉ tài khoản được mời mới được Accept.
+      description: Quyền SELF; chỉ tài khoản được mời mới được Accept, lời mời của người khác trả 404. Chỉ lời mời PENDING được Accept; lời mời đã ACCEPTED/DECLINED trả 422 INVALID_STATE_TRANSITION (kể cả lần Accept thứ hai) và không đổi dữ liệu. Accept tạo membership MEMBER ACTIVE, hoặc kích hoạt lại membership INACTIVE cũ với quyền MEMBER, cùng transaction với việc đóng lời mời và audit; không khôi phục team cũ (C33-01.2, C33-03.3).
       x-permission: SELF
       responses:
         '200': {description: Membership đã tham gia, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceMembership'}}}}
@@ -369,6 +369,7 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/RuleViolation'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
   /workspace-invitations/{invitationId}/decline:
@@ -378,7 +379,7 @@ paths:
       operationId: declineWorkspaceInvitation
       tags: [Workspace]
       summary: Từ chối lời mời
-      description: Quyền SELF; chỉ tài khoản được mời mới được Decline.
+      description: Quyền SELF; chỉ tài khoản được mời mới được Decline, lời mời của người khác trả 404. Chỉ lời mời PENDING được Decline; lời mời đã ACCEPTED/DECLINED trả 422 INVALID_STATE_TRANSITION (kể cả lần Decline thứ hai) và không đổi dữ liệu (C33-01.2).
       x-permission: SELF
       responses:
         '200': {description: Invitation DECLINED, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceInvitation'}}}}
@@ -386,6 +387,7 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/RuleViolation'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
   /workspaces/{workspaceId}/teams:
@@ -411,7 +413,7 @@ paths:
       operationId: createTeam
       tags: [Team]
       summary: Tạo team
-      description: Quyền WORKSPACE_MANAGER.
+      description: Quyền WORKSPACE_MANAGER. Tên trùng trong cùng workspace (không phân biệt hoa thường) trả 409 UNIQUE_CONFLICT.
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TeamCreateRequest'}}}}
       responses:
@@ -443,7 +445,7 @@ paths:
       operationId: updateTeam
       tags: [Team]
       summary: Sửa tên team
-      description: Quyền WORKSPACE_MANAGER.
+      description: Quyền WORKSPACE_MANAGER. Tên trùng với team khác trong cùng workspace (không phân biệt hoa thường) trả 409 UNIQUE_CONFLICT và giữ nguyên dữ liệu; workspace khác được trùng tên. Gửi đúng tên đang có là no-op (C33-01.1).
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TeamPatchRequest'}}}}
       responses:
@@ -452,6 +454,7 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
   /teams/{teamId}/members:
@@ -477,7 +480,7 @@ paths:
       operationId: addTeamMember
       tags: [Team]
       summary: Thêm thành viên vào team
-      description: Quyền WORKSPACE_MANAGER; tài khoản phải là thành viên workspace.
+      description: Quyền WORKSPACE_MANAGER; userId phải là thành viên ACTIVE của workspace chứa team, nếu không trả 400 VALIDATION_ERROR với details.fields.userId (C33-01.3). Người đã là thành viên ACTIVE của team trả 409 UNIQUE_CONFLICT. Thêm lại người từng rời team thì kích hoạt lại membership cũ với mainRoleId null; Manager đặt lại Main Role qua PATCH (C33-02.2).
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TeamMemberCreateRequest'}}}}
       responses:
@@ -498,7 +501,7 @@ paths:
       operationId: removeTeamMember
       tags: [Team]
       summary: Gỡ thành viên khỏi team
-      description: Quyền WORKSPACE_MANAGER; chặn nếu làm task chưa Done mất A/R cần thiết. Membership team chuyển INACTIVE, lịch sử được giữ.
+      description: Quyền WORKSPACE_MANAGER; gỡ người đang là A của task chưa DONE thuộc team này trả 422 RESPONSIBILITY_REQUIRED (C33-02.3). Membership team chuyển INACTIVE, cùng transaction với audit, lịch sử được giữ. Guard R áp dụng khi module assignment có dữ liệu (WP-024A/B, WP-026).
       x-permission: WORKSPACE_MANAGER
       responses:
         '204': {description: Đã gỡ thành viên}
@@ -515,6 +518,7 @@ paths:
       summary: Đặt Main Role cho thành viên team
       description: |
         Quyền WORKSPACE_MANAGER. Đặt mainRoleId thuộc cùng workspace cho membership của thành viên trong team này; gửi null để bỏ Main Role. expectedVersion là version membership. Thay đổi được ghi audit và không đổi assignment hiện có.
+        Thứ tự kiểm (C33-03.2): quyền, rồi request (mainRoleId không thuộc workspace trả 400 VALIDATION_ERROR với details.fields.mainRoleId), rồi expectedVersion (version cũ trả 409 VERSION_CONFLICT kể cả khi payload giống hiện tại), sau cùng mới xét no-op. Gửi đúng Main Role đang có với version đúng là no-op: trả 200, giữ version, không ghi audit. Thay đổi thật tăng version đúng 1, cùng transaction với audit. Main Role không đổi quyền hệ thống, Task Role, assignment/RACI hay điều kiện Open Work.
       x-permission: WORKSPACE_MANAGER
       requestBody:
         required: true
@@ -560,7 +564,7 @@ paths:
       operationId: createRole
       tags: [Team]
       summary: Tạo role chuyên môn
-      description: Quyền WORKSPACE_MANAGER.
+      description: Quyền WORKSPACE_MANAGER. Tên trùng trong cùng workspace (không phân biệt hoa thường) trả 409 UNIQUE_CONFLICT.
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LabelCreateRequest'}}}}
       responses:
@@ -579,7 +583,7 @@ paths:
       operationId: updateRole
       tags: [Team]
       summary: Sửa role chuyên môn
-      description: Quyền WORKSPACE_MANAGER; không đổi role/eligibility của assignment đã nhận.
+      description: Quyền WORKSPACE_MANAGER; không đổi role/eligibility của assignment đã nhận. Tên trùng với role khác trong cùng workspace (không phân biệt hoa thường) trả 409 UNIQUE_CONFLICT và giữ nguyên dữ liệu (C33-01.1).
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LabelPatchRequest'}}}}
       responses:
@@ -588,13 +592,14 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
     delete:
       operationId: deleteRole
       tags: [Team]
       summary: Xóa role không còn được tham chiếu
-      description: Quyền WORKSPACE_MANAGER; task DONE vẫn chỉ đọc; xung đột nếu role đang được task/member sử dụng.
+      description: Quyền WORKSPACE_MANAGER; task DONE vẫn chỉ đọc. Role còn được tham chiếu (Main Role của team membership, yêu cầu role của task, Task Role của assignment) trả 409 UNIQUE_CONFLICT với details.reason=IN_USE và số tham chiếu; không xóa dây chuyền, không mất lịch sử (C33-01.4).
       x-permission: WORKSPACE_MANAGER
       responses:
         '204': {description: Role đã xóa}
@@ -627,7 +632,7 @@ paths:
       operationId: createSkill
       tags: [Team]
       summary: Tạo skill
-      description: Quyền WORKSPACE_MANAGER.
+      description: Quyền WORKSPACE_MANAGER. Tên trùng trong cùng workspace (không phân biệt hoa thường) trả 409 UNIQUE_CONFLICT.
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LabelCreateRequest'}}}}
       responses:
@@ -646,7 +651,7 @@ paths:
       operationId: updateSkill
       tags: [Team]
       summary: Sửa skill
-      description: Quyền WORKSPACE_MANAGER; không tự hủy assignment Accepted.
+      description: Quyền WORKSPACE_MANAGER; không tự hủy assignment Accepted. Tên trùng với skill khác trong cùng workspace (không phân biệt hoa thường) trả 409 UNIQUE_CONFLICT và giữ nguyên dữ liệu (C33-01.1).
       x-permission: WORKSPACE_MANAGER
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LabelPatchRequest'}}}}
       responses:
@@ -655,13 +660,14 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
     delete:
       operationId: deleteSkill
       tags: [Team]
       summary: Xóa skill không còn được tham chiếu
-      description: Quyền WORKSPACE_MANAGER; xung đột nếu skill đang được task/member sử dụng.
+      description: Quyền WORKSPACE_MANAGER. Skill còn được tham chiếu (skill Member đã khai, yêu cầu skill của task) trả 409 UNIQUE_CONFLICT với details.reason=IN_USE và số tham chiếu; không xóa dây chuyền, không mất lịch sử (C33-01.4).
       x-permission: WORKSPACE_MANAGER
       responses:
         '204': {description: Skill đã xóa}
@@ -680,7 +686,7 @@ paths:
       summary: Tự khai toàn bộ skill của tôi
       description: |
         Quyền SELF; caller phải là thành viên ACTIVE của workspace. Thay toàn bộ tập skill của chính Member, không nhận userId và Manager không sửa thay. Task requiredSkillIds chỉ dùng để hiển thị mức phù hợp, không gate Open Work.
-        Version thuộc cả tập skill (WorkspaceMembership.skillsVersion) và bắt đầu từ 1, kể cả khi Member chưa khai skill nào. skillIds rỗng là hợp lệ và xóa hết skill. expectedVersion khác version hiện tại trả 409 VERSION_CONFLICT, tập skill giữ nguyên. Gửi đúng tập đang có là no-op: trả 200 với version hiện tại, không tăng version. Mỗi lần tập skill thay đổi thật, version tăng đúng 1 trong cùng transaction với việc ghi member_skills.
+        Version thuộc cả tập skill (WorkspaceMembership.skillsVersion) và bắt đầu từ 1, kể cả khi Member chưa khai skill nào. skillIds rỗng là hợp lệ và xóa hết skill. skillIds có phần tử không thuộc workspace trả 400 VALIDATION_ERROR với details.unknownSkillIds, không ghi một phần (C33-01.3). expectedVersion khác version hiện tại trả 409 VERSION_CONFLICT, tập skill giữ nguyên. Gửi đúng tập đang có là no-op: trả 200 với version hiện tại, không tăng version. Mỗi lần tập skill thay đổi thật, version tăng đúng 1 trong cùng transaction với việc ghi member_skills.
       x-permission: SELF
       requestBody:
         required: true
@@ -2241,7 +2247,7 @@ paths:
       operationId: declareMyCapacity
       tags: [Capacity]
       summary: Khai báo hoặc khai lại capacity tuần
-      description: Quyền SELF; khai lại đặt trạng thái PENDING_APPROVAL; capacity đã duyệt trước đó tiếp tục là đầu vào R09 đến khi Manager duyệt số mới.
+      description: Quyền SELF; caller không có membership ACTIVE của workspace nhận 404 (C33-02.1). declaredWeeklyHours từ 0 đến 168, tối đa 2 chữ số thập phân; sai miền trả 400, server không làm tròn. Lần đầu gửi expectedVersion=0; version lệch trả 409 VERSION_CONFLICT. Khai lại đặt trạng thái PENDING_APPROVAL; approvedWeeklyHours đã duyệt trước đó được giữ và tiếp tục là đầu vào R09 đến khi Manager duyệt số mới (C33-03.1).
       x-permission: SELF
       requestBody:
         required: true
@@ -2259,6 +2265,7 @@ paths:
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
@@ -2293,7 +2300,7 @@ paths:
       operationId: approveMemberCapacity
       tags: [Capacity]
       summary: Duyệt capacity tuần của Member
-      description: Quyền WORKSPACE_MANAGER; approvedWeeklyHours nullable không được phép, có thể bằng 0. Ghi actor/time/audit và đánh giá lại task R09 của Member.
+      description: Quyền WORKSPACE_MANAGER; approvedWeeklyHours không được null, từ 0 đến 168, tối đa 2 chữ số thập phân; sai miền trả 400, server không làm tròn. Chỉ duyệt được khi Member đã khai và capacity đang PENDING_APPROVAL; chưa khai (NOT_DECLARED) hoặc đã APPROVED trả 422 INVALID_STATE_TRANSITION, không ghi thay đổi. expectedVersion lệch trả 409 VERSION_CONFLICT. Ghi actor/time/audit và đánh giá lại task R09 của Member. Số đã duyệt bằng 0 hoặc chưa có số đã duyệt thì R09 là NOT_EVALUATED, không chia cho 0 (C33-01.2, C33-03.1).
       x-permission: WORKSPACE_MANAGER
       requestBody:
         required: true
@@ -2313,6 +2320,7 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/RuleViolation'}
         '500': {$ref: '#/components/responses/UnexpectedError'}
         default: {$ref: '#/components/responses/UnexpectedError'}
   /risk-rules:
@@ -3809,9 +3817,9 @@ components:
         workspaceId: {type: string, format: uuid}
         userId: {type: string, format: uuid}
         displayName: {type: string}
-        declaredWeeklyHours: {type: number, minimum: 0, nullable: true}
+        declaredWeeklyHours: {type: number, minimum: 0, maximum: 168, nullable: true}
         declaredAt: {type: string, format: date-time, nullable: true}
-        approvedWeeklyHours: {type: number, minimum: 0, nullable: true}
+        approvedWeeklyHours: {type: number, minimum: 0, maximum: 168, nullable: true}
         approvedByUserId: {type: string, format: uuid, nullable: true}
         approvedAt: {type: string, format: date-time, nullable: true}
         status: {$ref: '#/components/schemas/CapacityStatus'}
@@ -3820,13 +3828,13 @@ components:
       type: object
       required: [declaredWeeklyHours, expectedVersion]
       properties:
-        declaredWeeklyHours: {type: number, minimum: 0}
+        declaredWeeklyHours: {type: number, minimum: 0, maximum: 168, description: 'Giờ/tuần, tối đa 2 chữ số thập phân; sai miền trả 400, server không làm tròn.'}
         expectedVersion: {type: integer, minimum: 0, description: Gửi 0 khi khai báo lần đầu.}
     CapacityApprovalRequest:
       type: object
       required: [approvedWeeklyHours, expectedVersion]
       properties:
-        approvedWeeklyHours: {type: number, minimum: 0}
+        approvedWeeklyHours: {type: number, minimum: 0, maximum: 168, description: 'Giờ/tuần, tối đa 2 chữ số thập phân; sai miền trả 400, server không làm tròn.'}
         expectedVersion: {type: integer, minimum: 1}
     WorkUpdatePage:
       allOf:

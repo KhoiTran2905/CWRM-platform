@@ -402,8 +402,41 @@ Khi một module nguồn sẵn sàng, tên bộ lọc tương ứng phải đư�
 | Lê Đình Bảo (CWRM-33 #10203, 26/11) | Duyệt thiết kế 22 quy tắc P01.1–P01.7, P02.1–P02.8, P03.1–P03.7; chưa phát hành contract. Yêu cầu bổ sung P-03, kiểm schema của `unsupportedFilters`, chạy lại lint; không tự merge PR #10, không phát hành `0.3.4-draft`, không chuyển CWRM-33/34 sang Done. | Thêm mục P-03 và schema `FilterNotAvailableError`. Trình lại commit cuối để PM nghiệm thu contract. |
 | Đặng Văn Hiệp (CWRM-34 #10206, 26/11) | Đối chiếu `5a28da3`: L3b và ngữ nghĩa My Skills đủ cho WP-016B, **P-01 đạt review tài liệu** phía frontend. Chưa xác nhận toàn PR, chờ P-03 và schema lỗi 422. | Nhờ Hiệp review P-03 và schema 422 trên commit P-03. |
 
+### Hoàn thiện theo PM #10219 (27/11/2026)
+
+**Nguồn:** CWRM-33 #10219. PM duyệt hướng hoàn thiện C33-01.1–C33-03.3 (phương án B) và C33-04.1–04.10. Đây chưa phải nghiệm thu hay phát hành contract. Đầu vào: 10 điểm contract chưa quy định mà build PR #11 `0ac40e3` đã tự chọn (`backend/README.md`, CWRM-33 #10212), và 4 sai lệch CD-01–CD-04 Ban tìm thấy khi QA (CWRM-33 #10216, CWRM-39 #10217). Baseline vẫn là `0.3.3-draft` cho tới khi PM cho phát hành `0.3.4-draft` (C33-04.10).
+
+Commit này chỉ sửa `openapi.yaml` và file này. ERD không đổi: không quyết định nào thêm cột, bảng hay ràng buộc mới. Mọi kiểm tra miền và trạng thái đã có trong ERD hoặc thuộc tầng ứng dụng.
+
+#### Truy vết 10 quyết định
+
+| ID | Quyết định PM | Thay đổi contract | Build PR #11 |
+|---|---|---|---|
+| C33-01.1 | Tên Team/Role/Skill không trùng trong cùng workspace (không phân biệt hoa thường), workspace khác được trùng. Vi phạm trả 409 `UNIQUE_CONFLICT`. | Khai `409` cho `updateTeam`, `updateRole`, `updateSkill` (CD-03). Ghi quy tắc vào mô tả cả 3 operation tạo và 3 operation sửa, và vào dòng `UNIQUE_CONFLICT` của bảng mã lỗi. | Đã đúng ở `0ac40e3`. |
+| C33-01.2 | Accept/Decline chỉ với lời mời PENDING. Approve Capacity chỉ khi Member đã khai và đang PENDING_APPROVAL. Sai trạng thái trả 422 `INVALID_STATE_TRANSITION`, không ghi thay đổi. | Khai `422` cho `acceptWorkspaceInvitation`, `declineWorkspaceInvitation` (CD-01) và `approveMemberCapacity` (CD-02). Mô tả ghi rõ lần Accept/Decline thứ hai và trường hợp duyệt khi chưa khai hoặc đã APPROVED. `409` vẫn giữ theo C33-01.2 ("giữ 409 VERSION_CONFLICT và xung đột thực sự phù hợp"). Riêng accept/decline không có version nên build hiện chưa trả 409 ở hai operation này. | Đã đúng ở `0ac40e3`. |
+| C33-01.3 | Tham chiếu sai trong body trả 400 `VALIDATION_ERROR`, không bỏ qua ID, không ghi một phần. | Mô tả `addTeamMember` (`details.fields.userId`), `setTeamMemberMainRole` (`details.fields.mainRoleId`), `replaceMySkills` (`details.unknownSkillIds`). | Đã đúng ở `0ac40e3`. |
+| C33-01.4 | Chặn xóa Role/Skill còn tham chiếu: 409 `UNIQUE_CONFLICT`, `details.reason=IN_USE` kèm số tham chiếu. Không xóa dây chuyền, không thêm mã lỗi mới. | Mô tả `deleteRole`, `deleteSkill` và bảng mã lỗi. | Đã đúng ở `0ac40e3`. |
+| C33-02.1 | 401 khi chưa xác thực; 403 khi thấy tài nguyên nhưng thiếu quyền; 404 khi tài nguyên không tồn tại hoặc ngoài phạm vi được thấy. | Khai `404` cho `declareMyCapacity` (CD-04). Bảng `x-permission`: SELF trả 404 khi caller ngoài workspace hoặc khi lời mời là của người khác; TEAM_ACCESS không đạt trả 404; WORKSPACE_MANAGER trên tài nguyên của team mà Member không thuộc team trả 404. Sửa ý nghĩa 403/404 trong bảng mã lỗi. | **Sửa ở commit mới:** trước đây Member gọi thao tác Manager trên team mình không thuộc (ví dụ `PATCH /teams/{teamId}`) nhận 403, làm lộ team có tồn tại. Nay trả 404 như `GET`; Member của team đó vẫn nhận 403. |
+| C33-02.2 | Gỡ hoặc vô hiệu hóa membership thì team membership trong workspace đó chuyển INACTIVE trong cùng transaction với audit. Tham gia lại không tự khôi phục team. | Mô tả `updateWorkspaceMembership`, `removeWorkspaceMembership`, `acceptWorkspaceInvitation`, `addTeamMember`. | Cascade và việc không khôi phục team đã đúng ở `0ac40e3`. **Sửa ở commit mới:** thêm lại người cũ vào team trước đây khôi phục luôn `mainRoleId` cũ. Nay đặt `mainRoleId = null`, Manager đặt lại Main Role. |
+| C33-02.3 | Chặn gỡ, hạ quyền hoặc vô hiệu hóa Manager ACTIVE cuối (422 `LAST_MANAGER_REQUIRED`, kể cả request đồng thời). Chặn với Manager đang là A của task chưa DONE, và chặn gỡ khỏi team người đang là A của task chưa DONE trong team đó (422 `RESPONSIBILITY_REQUIRED`). Giữ guard R. | Mô tả `updateWorkspaceMembership`, `removeWorkspaceMembership`, `removeTeamMember`. Ghi rõ guard R áp dụng khi module assignment có dữ liệu. | Guard Manager cuối và guard A đã đúng ở `0ac40e3`. **Guard R chưa kiểm được:** schema chưa có bảng `assignments` (thuộc WP-024A/B, WP-026), nên hiện không có R nào có thể bị mất. Theo C33-02.3, phần này ghi là phụ thuộc và phải kiểm khi module sẵn sàng, không coi là PASS. |
+| C33-03.1 | `declaredWeeklyHours` và `approvedWeeklyHours` từ 0 đến 168, tối đa 2 chữ số thập phân. Sai miền trả 400, không làm tròn. Khai lại giữ số đã duyệt. Số đã duyệt bằng 0 hoặc chưa có thì R09 là NOT_EVALUATED. | `maximum: 168` và mô tả cho `CapacityDeclarationRequest`, `CapacityApprovalRequest`, `MemberCapacity`. Mô tả `declareMyCapacity`, `approveMemberCapacity`. Giới hạn 2 chữ số thập phân ghi bằng lời, không dùng `multipleOf: 0.01` vì số thực nhị phân làm validator báo sai với giá trị hợp lệ như `0.07`. | Đã đúng ở `0ac40e3`. |
+| C33-03.2 | Kiểm quyền, request, expectedVersion rồi mới xét no-op. Version cũ trả 409 kể cả khi payload giống hiện tại. No-op trả 200, giữ version, không ghi audit. | Mô tả `setTeamMemberMainRole` ghi thứ tự kiểm. | **Sửa ở commit mới:** trước đây kiểm `expectedVersion` trước khi kiểm `mainRoleId`, nên `mainRoleId` sai kèm version cũ trả 409. Nay trả 400. Quy tắc no-op giữ nguyên. |
+| C33-03.3 | `GET /workspace-invitations` chỉ trả lời mời của caller, đủ 3 trạng thái, mới nhất trước, thứ tự ổn định khi phân trang. Chỉ in-app, không email, không hạn dùng. | Mô tả `listMyWorkspaceInvitations`. | Đã đúng ở `0ac40e3` (`createdAt` giảm dần, cùng thời điểm thì theo `id`). |
+
+#### CD-01–CD-04
+
+| ID | Operation | Khai báo trước | Khai báo mới | Trạng thái |
+|---|---|---|---|---|
+| CD-01 | `acceptWorkspaceInvitation`, `declineWorkspaceInvitation` | 409, thiếu 422 | Thêm 422 | Chờ Ban retest |
+| CD-02 | `approveMemberCapacity` | thiếu 422 | Thêm 422 | Chờ Ban retest |
+| CD-03 | `updateTeam`, `updateRole`, `updateSkill` | thiếu 409 | Thêm 409 | Chờ Ban retest |
+| CD-04 | `declareMyCapacity` | thiếu 404 | Thêm 404 | Chờ Ban retest |
+
+Tổng cộng 7 khai báo status được thêm, khớp với 7 khai báo Ban đếm ở CWRM-33 #10221. Theo C33-04.5, CD-01–04 vẫn mở cho tới khi Ban xác nhận trên đúng SHA.
+
 ### Minh chứng
 
 - `redocly lint` (recommended): hợp lệ, 3 cảnh báo, giống hệt baseline 0.3.3-draft (`info-license`, server `localhost`, `/health` không có response 4xx). Không có cảnh báo mới.
 - Render Mermaid (`@mermaid-js/mermaid-cli`): cả 3 sơ đồ của `CWRM-11_ERD.md` render được, kể cả sơ đồ mục 2 có thêm hai cột. Architecture không đổi nên không render lại.
 - Commit P-03 (26/11/2026): `redocly lint` 2.84.0 (recommended) hợp lệ, 3 cảnh báo, giống baseline. Ví dụ của `FilterNotAvailable` khớp schema mới. Kiểm phủ định bằng cách sửa tạm ví dụ: `unsupportedFilters: []`, tên ngoài danh sách (`teamId`), phần tử trùng, `code` khác và `details` có trường thừa đều bị rule `no-invalid-media-type-examples` bắt. ERD và Architecture không đổi trong commit này nên không render lại sơ đồ.
+- Commit hoàn thiện theo #10219 (27/11/2026): `redocly lint` 2.84.0 (recommended) hợp lệ, 3 cảnh báo, giống baseline. Script đọc `openapi.yaml` bằng `js-yaml` xác nhận đủ 7 khai báo của CD-01–04; cùng script trên `633ac0f` báo thiếu cả 7. Build đối chiếu: PR #11 `acc4b0f`, lint, typecheck, build đạt; unit 39/39, e2e 4/4, `test:int` 40/40 với PostgreSQL 17. ERD và Architecture không đổi nên không render lại sơ đồ.
